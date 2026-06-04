@@ -414,6 +414,44 @@ function fmtDur(ms){
 }
 
 // ══════════════════════════════
+// SOUND & VIBRATION
+// ══════════════════════════════
+function beepSuccess() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+  // Vibration
+  if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+}
+
+function beepError() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 220;
+    osc.type = 'sawtooth';
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+  if(navigator.vibrate) navigator.vibrate([500]);
+}
+
+// ══════════════════════════════
 // SHIFT DETECTION
 // ══════════════════════════════
 function getCurrentShiftInfo() {
@@ -748,7 +786,82 @@ async function startPatrol(){
   document.getElementById('sh-no-patrol').style.display='none';
   document.getElementById('sh-in-patrol').style.display='block';
   renderDemoTags(); renderCurrentCPs(); startPatrolTimer();
-  toast(`Περιπολία #${num} ξεκίνησε`);
+  toast(`Περιπολία #${num} ξεκίνησε — NFC ενεργό`);
+  // Auto-activate NFC
+  startNFCReader();
+}
+
+let nfcReader = null;
+let nfcActive = false;
+
+async function startNFCReader() {
+  if(!('NDEFReader' in window)){
+    toast('⚠️ NFC δεν υποστηρίζεται σε αυτόν τον browser. Χρησιμοποίησε Chrome.',true);
+    return;
+  }
+  try {
+    nfcReader = new NDEFReader();
+    await nfcReader.scan();
+    nfcActive = true;
+    // Update button to show NFC is active
+    const btn = document.querySelector('.nfc-scan-btn');
+    if(btn) {
+      btn.style.borderColor = 'var(--green)';
+      btn.style.color = 'var(--green)';
+      btn.innerHTML = '<span style="font-size:28px">📡</span> NFC ΕΝΕΡΓΟ — ΠΛΗΣΙΑΣΕ TAG';
+    }
+    toast('✓ NFC ενεργοποιήθηκε αυτόματα');
+
+    nfcReader.addEventListener('reading', ({serialNumber, message}) => {
+      handleNFCRead(serialNumber);
+    });
+
+    nfcReader.addEventListener('readingerror', () => {
+      beepError();
+      toast('❌ Σφάλμα ανάγνωσης NFC tag', true);
+    });
+
+  } catch(e) {
+    if(e.name === 'NotAllowedError') {
+      toast('❌ Δώσε άδεια NFC στον browser!', true);
+    } else if(e.name === 'NotSupportedError') {
+      toast('❌ Η συσκευή δεν υποστηρίζει NFC', true);
+    } else {
+      toast('❌ NFC: ' + e.message, true);
+    }
+  }
+}
+
+function stopNFCReader() {
+  nfcActive = false;
+  nfcReader = null;
+  const btn = document.querySelector('.nfc-scan-btn');
+  if(btn) {
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.innerHTML = '<span style="font-size:28px">📡</span> ΣΑΡΩΣΗ NFC TAG';
+  }
+}
+
+function handleNFCRead(serialNumber) {
+  if(!S.patrol) return;
+
+  // Find tag in registered tags
+  const tag = S.tags.find(t =>
+    t.id.toLowerCase() === serialNumber.toLowerCase() ||
+    t.id.toLowerCase().replace(/:/g,'') === serialNumber.toLowerCase().replace(/:/g,'')
+  );
+
+  if(!tag) {
+    beepError();
+    toast(`⚠️ Άγνωστο tag (${serialNumber}) — Δεν είναι καταχωρημένο!`, true);
+    if(navigator.vibrate) navigator.vibrate([300,100,300,100,300]);
+    return;
+  }
+
+  // Success!
+  beepSuccess();
+  scanTag(tag.id, tag.name);
 }
 
 function startPatrolTimer(){
@@ -766,25 +879,10 @@ function renderDemoTags(){
 }
 
 function doNFCScan(){
-  if('NDEFReader' in window){readNFC();}
-  else{toast('Χρησιμοποίησε τα κουμπιά demo',true);}
-}
-async function readNFC(){
-  try{
-    const r=new NDEFReader(); await r.scan();
-    toast('📡 Σάρωση... Πλησίασε το NFC tag');
-    r.addEventListener('reading',({serialNumber})=>{
-      const tag=S.tags.find(t=>t.id===serialNumber);
-      if(!tag){
-        toast('⚠️ Άγνωστο NFC tag! Δεν βρέθηκε στα καταχωρημένα σημεία.',true);
-        return;
-      }
-      scanTag(serialNumber, tag.name);
-    });
-  }catch(e){
-    if(e.name==='NotAllowedError') toast('❌ Δώσε άδεια NFC στον browser!',true);
-    else if(e.name==='NotSupportedError') toast('❌ Αυτή η συσκευή δεν υποστηρίζει NFC',true);
-    else toast('❌ NFC σφάλμα: '+e.message,true);
+  if(nfcActive){
+    toast('✓ NFC είναι ήδη ενεργό — πλησίασε το tag!');
+  } else {
+    startNFCReader();
   }
 }
 
@@ -817,6 +915,7 @@ async function addCP(tagId,tagName,time,lat,lng){
 
   S.patrol.checkpoints.push(cpData);
   S.patrol.cp_count=(S.patrol.cp_count||0)+1;
+  beepSuccess();
 
   // Update patrol checkpoint count
   await db.from('patrols').update({checkpoint_count: S.patrol.cp_count}).eq('id',S.patrol.id);
@@ -858,6 +957,7 @@ async function endPatrol(){
 
   S.shift.patrols.push({cp_count:S.patrol.checkpoints.length});
   S.patrol=null;
+  stopNFCReader();
   document.getElementById('sh-in-patrol').style.display='none';
   document.getElementById('sh-no-patrol').style.display='block';
   updateShiftStats();
