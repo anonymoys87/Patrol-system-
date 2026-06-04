@@ -143,6 +143,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="card-title">Ρυθμίσεις Εταιρείας</div>
     <label>Κωδικός Επόπτη (για Dashboard)</label>
     <input type="password" id="cfg-pin" placeholder="π.χ. 1234">
+    <label>Τηλέφωνο SOS (αυτόματη κλήση)</label>
+    <input type="tel" id="cfg-sos-phone" placeholder="+30 69XXXXXXXX">
   </div>
   <div class="card">
     <div class="card-title">Φύλακες</div>
@@ -359,13 +361,14 @@ const S = {
 
 function save() {
   localStorage.setItem('secSys', JSON.stringify({
-    pin:S.pin, guards:S.guards, tags:S.tags
+    pin:S.pin, guards:S.guards, tags:S.tags, sosPhone:S.sosPhone||''
   }));
 }
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem('secSys')||'{}');
     S.pin = d.pin||''; S.guards = d.guards||[]; S.tags = d.tags||[];
+    S.sosPhone = d.sosPhone||'';
   } catch(e) {}
 }
 
@@ -520,14 +523,57 @@ function delTag(i){S.tags.splice(i,1);save();renderTagsList();}
 
 function saveSettings(){
   S.pin=document.getElementById('cfg-pin').value.trim();
+  S.sosPhone=document.getElementById('cfg-sos-phone').value.trim();
   if(!S.guards.length){toast('Πρόσθεσε τουλάχιστον έναν φύλακα!',true);return;}
   save(); goHome(); toast('Ρυθμίσεις αποθηκεύτηκαν ✓');
 }
-function acceptHandover(){
+async function acceptHandover(){
   closeModals();
-  show('scr-home');
-  loadRecentShifts();
-  toast('✓ Βάρδια παραδόθηκε επιτυχώς!');
+  // Auto-start shift for the new guard
+  const newGuard = document.getElementById('handover-new-guard').textContent;
+  if(newGuard){
+    const shiftInfo = getCurrentShiftInfo();
+    const shiftData = {
+      guard_name: newGuard,
+      start_time: new Date().toISOString(),
+      status: 'active',
+      shift_type: shiftInfo.shiftName,
+      shift_period: shiftInfo.shiftStart + ' - ' + shiftInfo.shiftEnd
+    };
+    const {data,error} = await db.from('shifts').insert(shiftData).select().single();
+    if(error){ toast('Σφάλμα έναρξης βάρδιας: '+error.message,true); return; }
+
+    S.shift = {...shiftData, id: data.id, patrols:[]};
+    localStorage.setItem('activeShift', JSON.stringify(S.shift));
+
+    document.getElementById('sh-guard-name').textContent = newGuard;
+    document.getElementById('sh-start-time').textContent = 'Έναρξη: '+new Date().toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
+    populateGuardSelects();
+    const ho = document.getElementById('handover-guard');
+    Array.from(ho.options).forEach(o=>{if(o.value===newGuard)o.disabled=true;});
+    updateShiftStats();
+    startShiftTimer();
+
+    const activeBanner = document.getElementById('shift-banner-active');
+    if(activeBanner){
+      const info = getCurrentShiftInfo();
+      activeBanner.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px">${info.type}</div>
+          <div style="font-size:15px;font-weight:800;color:var(--accent)">${info.shiftEmoji} ΒΑΡΔΙΑ ${info.shiftName} · ${info.shiftStart}→${info.shiftEnd}</div>
+        </div>
+      </div>`;
+    }
+
+    document.getElementById('sh-no-patrol').style.display='block';
+    document.getElementById('sh-in-patrol').style.display='none';
+    show('scr-shift');
+    toast(`✓ Βάρδια ξεκίνησε — ${newGuard}`);
+  } else {
+    show('scr-home');
+    loadRecentShifts();
+    toast('✓ Βάρδια παραδόθηκε!');
+  }
 }
 
 const ADMIN_PIN = '239261';
@@ -552,6 +598,7 @@ function checkPin(){
     closeModals();
     document.getElementById('pin-input').value='';
     document.getElementById('cfg-pin').value=S.pin;
+    document.getElementById('cfg-sos-phone').value=S.sosPhone||'';
     renderGuardsList(); renderTagsList();
     show('scr-settings');
   }else{
@@ -845,7 +892,12 @@ async function fireSOS(){
     lat, lng
   });
 
-  toast('🚨 SOS ΑΠΟΣΤΑΛΘΗΚΕ ΣΤΟΝ SERVER',true);
+  // Auto-call SOS phone
+  if(S.sosPhone){
+    window.location.href = 'tel:' + S.sosPhone;
+  } else {
+    toast('🚨 SOS αποστάλθηκε! Δεν έχει οριστεί τηλέφωνο SOS στις ρυθμίσεις.',true);
+  }
 }
 
 // ══════════════════════════════
