@@ -133,7 +133,7 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
     <div class="login-title">Dashboard Επόπτη</div>
     <div class="login-sub">Εισάγετε τον κωδικό πρόσβασης</div>
     <input type="text" id="pin-input" placeholder="Κωδικός" style="letter-spacing:4px;font-size:20px;text-align:center" autocomplete="off">
-    <button class="login-btn" id="login-btn">ΕΙΣΟΔΟΣ →</button>
+    <button class="login-btn" onclick="var p=document.getElementById('pin-input').value.trim();if(p=='239361'){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='block';initDashboard();}else{document.getElementById('login-err').textContent='Λάθος κωδικός!';}">ΕΙΣΟΔΟΣ →</button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
