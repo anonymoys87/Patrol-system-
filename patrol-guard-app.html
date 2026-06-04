@@ -326,11 +326,9 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 // SUPABASE
 // ══════════════════════════════
 const SUPA_URL = 'https://eanvqkwtxbfkgpyivbml.supabase.co';
-const SUPA_KEY = 'sb_publishable_zYF8lQQZkhr9jEfof26vPw_9vuSS4rB';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
 const { createClient } = supabase;
-const db = createClient(SUPA_URL, SUPA_KEY, {
-  global:{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
-});
+const db = createClient(SUPA_URL, SUPA_KEY);
 
 // Test connection
 async function testConnection() {
