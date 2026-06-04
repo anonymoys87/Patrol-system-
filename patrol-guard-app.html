@@ -330,6 +330,17 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const { createClient } = supabase;
 const db = createClient(SUPA_URL, SUPA_KEY);
 
+// Override fetch to always include correct headers
+const _origFetch = window.fetch;
+window.fetch = function(url, opts={}) {
+  if(typeof url === 'string' && url.includes('supabase.co')) {
+    opts.headers = opts.headers || {};
+    opts.headers['apikey'] = SUPA_KEY;
+    opts.headers['Authorization'] = 'Bearer ' + SUPA_KEY;
+  }
+  return _origFetch(url, opts);
+};
+
 // Test connection
 async function testConnection() {
   try {
