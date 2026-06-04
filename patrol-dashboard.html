@@ -216,11 +216,9 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
 
 <script>
 const SUPA_URL='https://eanvqkwtxbfkgpyivbml.supabase.co';
-const SUPA_KEY='sb_publishable_zYF8lQQZkhr9jEfof26vPw_9vuSS4rB';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
 const {createClient}=supabase;
-const db=createClient(SUPA_URL,SUPA_KEY,{
-  global:{headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}
-});
+const db=createClient(SUPA_URL,SUPA_KEY);
 
 // ── LOGIN ──
 const DASHBOARD_PIN = localStorage.getItem('dashPin') || '1234';
