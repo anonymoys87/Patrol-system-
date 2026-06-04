@@ -132,7 +132,7 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
     <div class="login-logo">⬡ SECURITY SYS</div>
     <div class="login-title">Dashboard Επόπτη</div>
     <div class="login-sub">Εισάγετε τον κωδικό πρόσβασης</div>
-    <input type="password" id="pin-input" placeholder="••••" maxlength="8" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="pin-input" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="login-btn" onclick="doLogin()">ΕΙΣΟΔΟΣ →</button>
     <div class="login-err" id="login-err"></div>
   </div>
@@ -227,15 +227,16 @@ const DASHBOARD_PIN = localStorage.getItem('dashPin') || '1234';
 let cpFilter='all';
 
 function doLogin(){
-  const pin=document.getElementById('pin-input').value;
-  // Simple PIN check - can be changed
-  if(pin==='239361'||pin===localStorage.getItem('dashPin')){
+  const pin = document.getElementById('pin-input').value.trim();
+  const correct = '239361';
+  if(pin === correct){
     document.getElementById('login-screen').style.display='none';
     document.getElementById('dashboard').style.display='block';
     initDashboard();
-  }else{
-    document.getElementById('login-err').textContent='Λάθος κωδικός!';
+  } else {
+    document.getElementById('login-err').textContent='❌ Λάθος κωδικός! Δοκίμασε ξανά.';
     document.getElementById('pin-input').value='';
+    document.getElementById('pin-input').focus();
   }
 }
 async function exportCSV(){
