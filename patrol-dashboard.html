@@ -132,8 +132,8 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
     <div class="login-logo">⬡ SECURITY SYS</div>
     <div class="login-title">Dashboard Επόπτη</div>
     <div class="login-sub">Εισάγετε τον κωδικό πρόσβασης</div>
-    <input type="password" id="pin-input" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">ΕΙΣΟΔΟΣ →</button>
+    <input type="text" id="pin-input" placeholder="Κωδικός" style="letter-spacing:4px;font-size:20px;text-align:center" autocomplete="off">
+    <button class="login-btn" id="login-btn">ΕΙΣΟΔΟΣ →</button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
@@ -227,18 +227,24 @@ const DASHBOARD_PIN = localStorage.getItem('dashPin') || '1234';
 let cpFilter='all';
 
 function doLogin(){
-  const pin = document.getElementById('pin-input').value.trim();
-  const correct = '239361';
-  if(pin === correct){
+  var pin = document.getElementById('pin-input').value.trim();
+  var correct = '239361';
+  if(pin == correct){
     document.getElementById('login-screen').style.display='none';
     document.getElementById('dashboard').style.display='block';
     initDashboard();
   } else {
-    document.getElementById('login-err').textContent='❌ Λάθος κωδικός! Δοκίμασε ξανά.';
+    document.getElementById('login-err').textContent='❌ Λάθος κωδικός!';
     document.getElementById('pin-input').value='';
-    document.getElementById('pin-input').focus();
   }
 }
+
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('pin-input').addEventListener('keydown', function(e){
+    if(e.key==='Enter') doLogin();
+  });
+});
 async function exportCSV(){
   const {data} = await db.from('checkpoints').select('*').order('scanned_at',{ascending:false});
   if(!data?.length){alert('Δεν υπάρχουν δεδομένα για export!');return;}
