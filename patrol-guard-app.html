@@ -174,6 +174,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div style="font-size:11px;color:var(--muted);text-align:right" id="home-date"></div>
     </div>
   </div>
+  <div class="card" id="shift-banner" style="border-color:rgba(0,180,216,0.3);background:rgba(0,180,216,0.05)"></div>
+
   <div class="card">
     <div class="card-title">Ανάληψη Βάρδιας</div>
     <label>Επιλέξτε Φύλακα</label>
@@ -198,6 +200,8 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
       <div><span class="live-badge"><span class="dot"></span>ΒΑΡΔΙΑ ΕΝΕΡΓΗ</span></div>
     </div>
   </div>
+  <div class="card" id="shift-banner-active" style="border-color:rgba(0,180,216,0.3);background:rgba(0,180,216,0.05);margin-bottom:10px"></div>
+
   <div class="shift-bar">
     <span style="font-size:13px;color:var(--accent);font-weight:700">⏱ ΒΑΡΔΙΑ</span>
     <span style="font-size:12px;color:var(--muted)" id="sh-start-time">Έναρξη: --:--</span>
@@ -254,6 +258,32 @@ hr.div{border:none;border-top:1px solid var(--border);margin:12px 0}
 </div>
 
 </div><!-- /wrap -->
+
+<!-- HANDOVER ACCEPTANCE MODAL -->
+<div class="overlay" id="m-handover">
+  <div class="modal">
+    <h3 style="color:var(--green)">✅ Παράδοση Βάρδιας</h3>
+    <p>Ο φύλακας <strong id="handover-new-guard" style="color:var(--accent)"></strong> παραλαμβάνει βάρδια.<br><br>Παρακαλώ επιβεβαιώστε την παραλαβή.</p>
+    <button class="btn btn-green" onclick="acceptHandover()">✓ ΑΠΟΔΕΧΟΜΑΙ ΤΗ ΒΑΡΔΙΑ</button>
+    <button class="btn btn-ghost" onclick="closeModals()">ΑΚΥΡΟ</button>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="overlay" id="m-pin">
+  <div class="modal">
+    <h3>🔒 Κωδικός Διαχειριστή</h3>
+    <p>Εισάγετε τον κωδικό για πρόσβαση στις ρυθμίσεις.</p>
+    <input type="password" id="pin-input" placeholder="••••••" maxlength="6"
+      style="text-align:center;letter-spacing:6px;font-size:22px;margin-bottom:14px"
+      onkeydown="if(event.key==='Enter')checkPin()">
+    <div class="modal-row">
+      <button class="btn btn-ghost" onclick="closeModals();document.getElementById('pin-input').value=''">ΑΚΥΡΟ</button>
+      <button class="btn btn-accent" onclick="checkPin()">ΕΙΣΟΔΟΣ</button>
+    </div>
+    <div id="pin-err" style="color:var(--red);font-size:13px;text-align:center;margin-top:10px"></div>
+  </div>
+</div>
 
 <!-- MODALS -->
 <div class="overlay" id="m-end-patrol">
@@ -381,6 +411,74 @@ function fmtDur(ms){
 }
 
 // ══════════════════════════════
+// SHIFT DETECTION
+// ══════════════════════════════
+function getCurrentShiftInfo() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const h = now.getHours();
+  const isWeekend = (day === 0 || day === 6);
+
+  let shiftName, shiftEmoji, shiftStart, shiftEnd;
+
+  if (isWeekend) {
+    // Σαββατοκύριακο: 2 βάρδιες
+    if (h >= 8 && h < 20) {
+      shiftName = 'ΠΡΩΙ'; shiftEmoji = '☀️';
+      shiftStart = '08:00'; shiftEnd = '20:00';
+    } else {
+      shiftName = 'ΒΡΑΔΥ'; shiftEmoji = '🌙';
+      shiftStart = '20:00'; shiftEnd = '08:00';
+    }
+  } else {
+    // Καθημερινή: 3 βάρδιες
+    if (h >= 8 && h < 16) {
+      shiftName = 'ΠΡΩΙ'; shiftEmoji = '🌅';
+      shiftStart = '08:00'; shiftEnd = '16:00';
+    } else if (h >= 16 && h < 24) {
+      shiftName = 'ΑΠΟΓΕΥΜΑ'; shiftEmoji = '🌆';
+      shiftStart = '16:00'; shiftEnd = '00:00';
+    } else {
+      shiftName = 'ΒΡΑΔΥ'; shiftEmoji = '🌙';
+      shiftStart = '00:00'; shiftEnd = '08:00';
+    }
+  }
+
+  // Countdown to end of shift
+  const endH = parseInt(shiftEnd.split(':')[0]);
+  const endDate = new Date(now);
+  endDate.setHours(endH, 0, 0, 0);
+  if (endDate <= now) endDate.setDate(endDate.getDate() + 1);
+  const remaining = endDate - now;
+  const remH = Math.floor(remaining / 3600000);
+  const remM = Math.floor((remaining % 3600000) / 60000);
+
+  const dayName = ['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'][day];
+  const type = isWeekend ? 'Σαββατοκύριακο' : 'Καθημερινή';
+
+  return { shiftName, shiftEmoji, shiftStart, shiftEnd, remH, remM, dayName, type, isWeekend };
+}
+
+function renderShiftBanner() {
+  const info = getCurrentShiftInfo();
+  const el = document.getElementById('shift-banner');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">${info.type} · ${info.dayName}</div>
+        <div style="font-size:18px;font-weight:800;color:var(--accent);margin-top:2px">${info.shiftEmoji} ΒΑΡΔΙΑ ${info.shiftName}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${info.shiftStart} → ${info.shiftEnd}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px">ΛΗΓΕΙ ΣΕ</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:22px;color:var(--orange);font-weight:700">${String(info.remH).padStart(2,'0')}:${String(info.remM).padStart(2,'0')}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ══════════════════════════════
 // SETTINGS
 // ══════════════════════════════
 function renderGuardsList() {
@@ -425,16 +523,47 @@ function saveSettings(){
   if(!S.guards.length){toast('Πρόσθεσε τουλάχιστον έναν φύλακα!',true);return;}
   save(); goHome(); toast('Ρυθμίσεις αποθηκεύτηκαν ✓');
 }
+function acceptHandover(){
+  closeModals();
+  show('scr-home');
+  loadRecentShifts();
+  toast('✓ Βάρδια παραδόθηκε επιτυχώς!');
+}
+
+const ADMIN_PIN = '239261';
+let pinTarget = 'home'; // where to go after PIN
+
 function goSettings(){
-  document.getElementById('cfg-pin').value=S.pin;
-  renderGuardsList(); renderTagsList(); show('scr-settings');
+  pinTarget = 'home';
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('m-pin').classList.add('open');
 }
 function goSettingsFromShift(){
   if(S.patrol){toast('Τερμάτισε πρώτα την ενεργή περιπολία!',true);return;}
-  goSettings();
+  pinTarget = 'shift';
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('m-pin').classList.add('open');
+}
+function checkPin(){
+  const entered = document.getElementById('pin-input').value.trim();
+  if(entered === ADMIN_PIN){
+    closeModals();
+    document.getElementById('pin-input').value='';
+    document.getElementById('cfg-pin').value=S.pin;
+    renderGuardsList(); renderTagsList();
+    show('scr-settings');
+  }else{
+    document.getElementById('pin-err').textContent='❌ Λάθος κωδικός!';
+    document.getElementById('pin-input').value='';
+  }
 }
 function goHome(){
-  populateGuardSelects(); loadRecentShifts(); startClock(); show('scr-home');
+  populateGuardSelects(); loadRecentShifts(); startClock();
+  renderShiftBanner();
+  setInterval(renderShiftBanner, 60000); // update every minute
+  show('scr-home');
 }
 
 function populateGuardSelects(){
@@ -465,18 +594,33 @@ async function startShift(){
   const g=document.getElementById('sel-guard').value;
   if(!g){toast('Επίλεξε φύλακα!',true);return;}
 
+  const shiftInfo = getCurrentShiftInfo();
   const shiftData = {
     guard_name: g,
     start_time: new Date().toISOString(),
-    status: 'active'
+    status: 'active',
+    shift_type: shiftInfo.shiftName,
+    shift_period: shiftInfo.shiftStart + ' - ' + shiftInfo.shiftEnd
   };
 
   const {data,error} = await db.from('shifts').insert(shiftData).select().single();
   if(error){toast('Σφάλμα server: '+error.message,true);return;}
 
   S.shift = {...shiftData, id: data.id, patrols:[]};
+  localStorage.setItem('activeShift', JSON.stringify(S.shift));
   document.getElementById('sh-guard-name').textContent=g;
   document.getElementById('sh-start-time').textContent='Έναρξη: '+new Date().toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
+  // Render shift banner in shift screen
+  const activeBanner = document.getElementById('shift-banner-active');
+  if(activeBanner) {
+    const info = getCurrentShiftInfo();
+    activeBanner.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px">${info.type}</div>
+        <div style="font-size:15px;font-weight:800;color:var(--accent)">${info.shiftEmoji} ΒΑΡΔΙΑ ${info.shiftName} · ${info.shiftStart}→${info.shiftEnd}</div>
+      </div>
+    </div>`;
+  }
   populateGuardSelects();
   const ho=document.getElementById('handover-guard');
   Array.from(ho.options).forEach(o=>{if(o.value===g)o.disabled=true;});
@@ -525,9 +669,15 @@ async function endShift(){
   }).eq('id', S.shift.id);
 
   S.shift=null; S.patrol=null;
-  show('scr-home');
-  loadRecentShifts();
-  toast('Βάρδια παραδόθηκε ✓');
+  localStorage.removeItem('activeShift');
+
+  // Show handover acceptance screen
+  showHandoverAcceptance(ho);
+}
+
+function showHandoverAcceptance(newGuard) {
+  document.getElementById('m-handover').classList.add('open');
+  document.getElementById('handover-new-guard').textContent = newGuard;
 }
 
 // ══════════════════════════════
@@ -575,12 +725,20 @@ function doNFCScan(){
 async function readNFC(){
   try{
     const r=new NDEFReader(); await r.scan();
-    toast('Σάρωση... Πλησίασε το NFC tag');
+    toast('📡 Σάρωση... Πλησίασε το NFC tag');
     r.addEventListener('reading',({serialNumber})=>{
       const tag=S.tags.find(t=>t.id===serialNumber);
-      scanTag(serialNumber,tag?tag.name:'Άγνωστο');
+      if(!tag){
+        toast('⚠️ Άγνωστο NFC tag! Δεν βρέθηκε στα καταχωρημένα σημεία.',true);
+        return;
+      }
+      scanTag(serialNumber, tag.name);
     });
-  }catch(e){toast('NFC: '+e.message,true);}
+  }catch(e){
+    if(e.name==='NotAllowedError') toast('❌ Δώσε άδεια NFC στον browser!',true);
+    else if(e.name==='NotSupportedError') toast('❌ Αυτή η συσκευή δεν υποστηρίζει NFC',true);
+    else toast('❌ NFC σφάλμα: '+e.message,true);
+  }
 }
 
 function scanTag(tagId,tagName){
@@ -717,13 +875,55 @@ async function loadRecentShifts(){
 // ══════════════════════════════
 load();
 testConnection();
-if(S.guards.length){
-  goHome();
-}else{
-  document.getElementById('cfg-pin').value=S.pin;
-  renderGuardsList(); renderTagsList();
-  show('scr-settings');
+
+// Check for interrupted shift in localStorage
+async function checkResumeShift() {
+  const savedShift = localStorage.getItem('activeShift');
+  if (savedShift) {
+    try {
+      const shift = JSON.parse(savedShift);
+      // Verify shift is still active in DB
+      const {data} = await db.from('shifts').select('*').eq('id', shift.id).eq('status','active').single();
+      if (data) {
+        S.shift = {...shift, patrols: shift.patrols || []};
+        document.getElementById('sh-guard-name').textContent = S.shift.guard_name;
+        document.getElementById('sh-start-time').textContent = 'Έναρξη: ' + new Date(S.shift.start_time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
+        populateGuardSelects();
+        const ho = document.getElementById('handover-guard');
+        Array.from(ho.options).forEach(o=>{if(o.value===S.shift.guard_name)o.disabled=true;});
+        updateShiftStats();
+        startShiftTimer();
+        const activeBanner = document.getElementById('shift-banner-active');
+        if(activeBanner) {
+          const info = getCurrentShiftInfo();
+          activeBanner.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:10px;color:var(--muted);letter-spacing:1px">${info.type}</div>
+              <div style="font-size:15px;font-weight:800;color:var(--accent)">${info.shiftEmoji} ΒΑΡΔΙΑ ${info.shiftName} · ${info.shiftStart}→${info.shiftEnd}</div>
+            </div>
+          </div>`;
+        }
+        show('scr-shift');
+        toast('✓ Συνέχεια βάρδιας ' + S.shift.guard_name);
+        return true;
+      }
+    } catch(e) {}
+    localStorage.removeItem('activeShift');
+  }
+  return false;
 }
+
+async function init() {
+  if (S.guards.length) {
+    const resumed = await checkResumeShift();
+    if (!resumed) goHome();
+  } else {
+    document.getElementById('cfg-pin').value = S.pin;
+    renderGuardsList(); renderTagsList();
+    show('scr-settings');
+  }
+}
+init();
 </script>
 </body>
 </html>
