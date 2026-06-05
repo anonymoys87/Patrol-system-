@@ -302,7 +302,6 @@ function doLogin(){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
-  document.getElementById('login-btn').addEventListener('click', doLogin);
   document.getElementById('pin-input').addEventListener('keydown', function(e){
     if(e.key==='Enter') doLogin();
   });
