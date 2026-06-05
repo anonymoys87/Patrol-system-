@@ -154,6 +154,12 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
     </div>
   </div>
 
+  <!-- DEBUG PANEL -->
+  <div id="debug-panel" style="background:rgba(255,170,0,0.1);border:1px solid #fb8500;border-radius:10px;padding:12px;margin-bottom:14px;font-family:monospace;font-size:11px;display:block">
+    <div style="color:#fb8500;font-weight:700;margin-bottom:6px">🔍 DEBUG — Σύνδεση Supabase</div>
+    <div id="debug-log" style="color:#dce8ff;line-height:1.8">Φόρτωση...</div>
+  </div>
+
   <!-- SOS ALERT -->
   <div class="sos-bar" id="sos-bar">
     <h3>🚨 SOS — ΕΚΤΑΚΤΗ ΑΝΑΓΚΗ!</h3>
@@ -218,12 +224,31 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
 const SUPA_URL='https://eanvqkwtxbfkgpyivbml.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
 
+function debugLog(msg) {
+  const el = document.getElementById('debug-log');
+  if(el) el.innerHTML += msg + '<br>';
+  console.log(msg);
+}
+
 async function dbGet(table, params='') {
-  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, {
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'}
-  });
-  if(!r.ok) return {data:null,error:await r.text()};
-  return {data:await r.json(),error:null};
+  debugLog(`→ GET ${table}?${params.substring(0,50)}`);
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, {
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'}
+    });
+    debugLog(`← ${r.status} ${r.statusText}`);
+    if(!r.ok) {
+      const err = await r.text();
+      debugLog(`❌ Error: ${err}`);
+      return {data:null,error:err};
+    }
+    const data = await r.json();
+    debugLog(`✓ ${Array.isArray(data)?data.length+' rows':'OK'}`);
+    return {data,error:null};
+  } catch(e) {
+    debugLog(`❌ Exception: ${e.message}`);
+    return {data:null,error:e.message};
+  }
 }
 
 async function dbPost(table, body) {
