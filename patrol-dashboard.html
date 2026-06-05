@@ -392,12 +392,13 @@ async function loadStats(){
   const today=new Date(); today.setHours(0,0,0,0);
   const todayISO=today.toISOString();
 
-  const [{data:activeShifts},{data:todayPatrols},{data:todayCPs},{data:sosList}]=await Promise.all([
+  const [r1,r2,r3,r4]=await Promise.all([
     dbGet('shifts','select=id&status=eq.active'),
     dbGet('patrols',`select=id&start_time=gte.${todayISO}`),
     dbGet('checkpoints',`select=id&scanned_at=gte.${todayISO}`),
     dbGet('sos_events',`select=id&triggered_at=gte.${todayISO}`)
   ]);
+  const activeShifts=r1.data, todayPatrols=r2.data, todayCPs=r3.data, sosList=r4.data;
 
   document.getElementById('stat-active').textContent=activeShifts?.length||0;
   document.getElementById('stat-patrols').textContent=todayPatrols?.length||0;
