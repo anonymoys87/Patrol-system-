@@ -160,6 +160,12 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
     <div id="debug-log" style="color:#dce8ff;line-height:1.8">Φόρτωση...</div>
   </div>
 
+  <!-- DEBUG PANEL -->
+  <div id="debug-panel" style="background:#1a0a00;border:1px solid #fb8500;border-radius:10px;padding:12px;margin-bottom:14px;font-family:monospace;font-size:11px;color:#fb8500;max-height:150px;overflow-y:auto">
+    <div style="font-weight:700;margin-bottom:6px">🔍 DEBUG LOG:</div>
+    <div id="debug-log">Αναμονή...</div>
+  </div>
+
   <!-- SOS ALERT -->
   <div class="sos-bar" id="sos-bar">
     <h3>🚨 SOS — ΕΚΤΑΚΤΗ ΑΝΑΓΚΗ!</h3>
@@ -230,7 +236,14 @@ function debugLog(msg) {
   console.log(msg);
 }
 
+function dbLog(msg) {
+  const el = document.getElementById('debug-log');
+  if(el) el.innerHTML += '<br>' + new Date().toLocaleTimeString('el-GR') + ' ' + msg;
+  console.log(msg);
+}
+
 async function dbGet(table, params='') {
+  dbLog(`GET ${table}?${params.substring(0,50)}`);
   debugLog(`→ GET ${table}?${params.substring(0,50)}`);
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, {
