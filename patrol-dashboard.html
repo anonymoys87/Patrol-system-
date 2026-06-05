@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Επόπτη — Σύστημα Ασφαλείας</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -217,19 +217,34 @@ select.filter-select{padding:7px 12px;background:var(--s2);border:1px solid var(
 <script>
 const SUPA_URL='https://eanvqkwtxbfkgpyivbml.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
-const {createClient}=supabase;
-const db=createClient(SUPA_URL,SUPA_KEY);
 
-// Override fetch to always include correct headers
-const _origFetch = window.fetch;
-window.fetch = function(url, opts={}) {
-  if(typeof url === 'string' && url.includes('supabase.co')) {
-    opts.headers = opts.headers || {};
-    opts.headers['apikey'] = SUPA_KEY;
-    opts.headers['Authorization'] = 'Bearer ' + SUPA_KEY;
-  }
-  return _origFetch(url, opts);
-};
+async function dbGet(table, params='') {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${params}`, {
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json'}
+  });
+  if(!r.ok) return {data:null,error:await r.text()};
+  return {data:await r.json(),error:null};
+}
+
+async function dbPost(table, body) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+    method:'POST',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok) return {data:null,error:await r.text()};
+  const d=await r.json(); return {data:Array.isArray(d)?d[0]:d,error:null};
+}
+
+async function dbPatch(table, match, body) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${match}`, {
+    method:'PATCH',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok) return {data:null,error:await r.text()};
+  return {data:await r.json().catch(()=>null),error:null};
+}
 
 // ── LOGIN ──
 const DASHBOARD_PIN = localStorage.getItem('dashPin') || '1234';
@@ -255,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 async function exportCSV(){
-  const {data} = await db.from('checkpoints').select('*').order('scanned_at',{ascending:false});
+  const {data} = await dbGet('checkpoints','select=*&order=scanned_at.desc');
   if(!data?.length){alert('Δεν υπάρχουν δεδομένα για export!');return;}
 
   let csv = 'Φύλακας,Σημείο NFC,Tag ID,Ημερομηνία,Ώρα,Γεωγρ. Πλάτος,Γεωγρ. Μήκος
@@ -311,34 +326,7 @@ function startDashClock(){
   },1000);
 }
 
-// ── REALTIME ──
-function setupRealtime(){
-  // Listen for new checkpoints
-  db.channel('checkpoints-channel')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'checkpoints'},
-      payload=>{
-        showLiveAlert(`📍 ${payload.new.tag_name} — ${payload.new.guard_name}`);
-        loadCheckpoints();
-        loadStats();
-      })
-    .subscribe();
-
-  // Listen for SOS
-  db.channel('sos-channel')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'sos_events'},
-      payload=>{
-        showSOSAlert(payload.new);
-        loadSOSEvents();
-        loadStats();
-      })
-    .subscribe();
-
-  // Listen for new shifts
-  db.channel('shifts-channel')
-    .on('postgres_changes',{event:'*',schema:'public',table:'shifts'},
-      ()=>{loadActiveShifts();loadRecentShifts();loadStats();})
-    .subscribe();
-}
+function setupRealtime(){ /* Realtime via polling */ }
 
 let liveAlertTimeout=null;
 function showLiveAlert(msg){
@@ -368,10 +356,10 @@ async function loadStats(){
   const todayISO=today.toISOString();
 
   const [{data:activeShifts},{data:todayPatrols},{data:todayCPs},{data:sosList}]=await Promise.all([
-    db.from('shifts').select('id').eq('status','active'),
-    db.from('patrols').select('id').gte('start_time',todayISO),
-    db.from('checkpoints').select('id').gte('scanned_at',todayISO),
-    db.from('sos_events').select('id').gte('triggered_at',todayISO)
+    dbGet('shifts','select=id&status=eq.active'),
+    dbGet('patrols',`select=id&start_time=gte.${todayISO}`),
+    dbGet('checkpoints',`select=id&scanned_at=gte.${todayISO}`),
+    dbGet('sos_events',`select=id&triggered_at=gte.${todayISO}`)
   ]);
 
   document.getElementById('stat-active').textContent=activeShifts?.length||0;
@@ -382,7 +370,7 @@ async function loadStats(){
 
 // ── ACTIVE SHIFTS ──
 async function loadActiveShifts(){
-  const {data}=await db.from('shifts').select('*').eq('status','active').order('start_time',{ascending:false});
+  const {data}=await dbGet('shifts','select=*&status=eq.active&order=start_time.desc');
   const el=document.getElementById('active-shifts-list');
   if(!data?.length){el.innerHTML='<div class="empty">Δεν υπάρχουν ενεργές βάρδιες</div>';return;}
 
@@ -426,7 +414,7 @@ async function loadActiveShifts(){
 
 // ── RECENT SHIFTS ──
 async function loadRecentShifts(){
-  const {data}=await db.from('shifts').select('*').eq('status','completed').order('end_time',{ascending:false}).limit(10);
+  const {data}=await dbGet('shifts','select=*&status=eq.completed&order=end_time.desc&limit=10');
   const el=document.getElementById('recent-shifts-list');
   if(!data?.length){el.innerHTML='<div class="empty">Δεν υπάρχουν ολοκληρωμένες βάρδιες</div>';return;}
   el.innerHTML=data.map(s=>{
@@ -457,14 +445,13 @@ function filterCP(type,btn){
 
 async function loadCheckpoints(){
   const guardFilter=document.getElementById('filter-guard').value;
-  let query=db.from('checkpoints').select('*').order('scanned_at',{ascending:false}).limit(100);
+  let qs='select=*&order=scanned_at.desc&limit=100';
   if(cpFilterDate==='today'){
     const today=new Date();today.setHours(0,0,0,0);
-    query=query.gte('scanned_at',today.toISOString());
+    qs+=`&scanned_at=gte.${today.toISOString()}`;
   }
-  if(guardFilter) query=query.eq('guard_name',guardFilter);
-
-  const {data}=await query;
+  if(guardFilter) qs+=`&guard_name=eq.${encodeURIComponent(guardFilter)}`;
+  const {data}=await dbGet('checkpoints',qs);
   const tbody=document.getElementById('cp-tbody');
   if(!data?.length){tbody.innerHTML='<tr><td colspan="4" class="empty">Δεν υπάρχουν εγγραφές</td></tr>';return;}
   tbody.innerHTML=data.map(cp=>{
@@ -481,7 +468,7 @@ async function loadCheckpoints(){
 }
 
 async function populateGuardFilter(){
-  const {data}=await db.from('shifts').select('guard_name');
+  const {data}=await dbGet('shifts','select=guard_name');
   if(!data)return;
   const guards=[...new Set(data.map(s=>s.guard_name))];
   const sel=document.getElementById('filter-guard');
@@ -492,7 +479,7 @@ async function populateGuardFilter(){
 
 // ── SOS EVENTS ──
 async function loadSOSEvents(){
-  const {data}=await db.from('sos_events').select('*').order('triggered_at',{ascending:false}).limit(20);
+  const {data}=await dbGet('sos_events','select=*&order=triggered_at.desc&limit=20');
   const el=document.getElementById('sos-list');
   if(!data?.length){el.innerHTML='<div class="empty">Δεν υπάρχουν συμβάντα SOS</div>';return;}
   el.innerHTML=data.map(ev=>{
