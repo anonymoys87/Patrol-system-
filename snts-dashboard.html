@@ -1049,29 +1049,22 @@ async function saveGuard(){
 }
 
 async function delGuard(id){
-  const guard = guards.find(g=>g.id===id);
+  const guard=guards.find(g=>g.id===id);
   if(!guard) return;
-  const name = guard.full_name;
-  if(!confirm('Διαγραφή φύλακα "'+name+'";
-
-Θα διαγραφούν και όλα τα δεδομένα του:
-• Βάρδιες
-• Σκαν
-• Περιπολίες
-• Συμβάντα
-• SOS'))return;
-  // Delete all related data
+  const name=guard.full_name;
+  const msg="Diagrafi fylaka: "+name+"\n\nTha diagrafoun:\n- Vardies\n- Skan\n- Peripolies\n- Symbanta\n- SOS";
+  if(!confirm(msg)) return;
+  const enc=encodeURIComponent(name);
   await Promise.all([
-    sb('DELETE','shifts','guard_name=eq.'+encodeURIComponent(name)),
-    sb('DELETE','patrol_scans','guard_name=eq.'+encodeURIComponent(name)),
-    sb('DELETE','patrols','guard_name=eq.'+encodeURIComponent(name)),
-    sb('DELETE','incidents','guard_name=eq.'+encodeURIComponent(name)),
-    sb('DELETE','sos_alerts','guard_name=eq.'+encodeURIComponent(name)),
+    sb('DELETE','shifts','guard_name=eq.'+enc),
+    sb('DELETE','patrol_scans','guard_name=eq.'+enc),
+    sb('DELETE','patrols','guard_name=eq.'+enc),
+    sb('DELETE','incidents','guard_name=eq.'+enc),
+    sb('DELETE','sos_alerts','guard_name=eq.'+enc)
   ]);
-  // Deactivate guard
   await patch('guards','id=eq.'+id,{active:false});
   await load();
-  toast('Φύλακας και όλα τα δεδομένα διαγράφηκαν','ok');
+  toast('Diagrafi OK','ok');
 }
 
 // ── LOCATIONS ────────────────────────────────────────
