@@ -1049,10 +1049,29 @@ async function saveGuard(){
 }
 
 async function delGuard(id){
-  if(!confirm('Διαγραφή φύλακα;'))return;
-  await patch('guards',`id=eq.${id}`,{active:false});
+  const guard = guards.find(g=>g.id===id);
+  if(!guard) return;
+  const name = guard.full_name;
+  if(!confirm('Διαγραφή φύλακα "'+name+'";
+
+Θα διαγραφούν και όλα τα δεδομένα του:
+• Βάρδιες
+• Σκαν
+• Περιπολίες
+• Συμβάντα
+• SOS'))return;
+  // Delete all related data
+  await Promise.all([
+    sb('DELETE','shifts','guard_name=eq.'+encodeURIComponent(name)),
+    sb('DELETE','patrol_scans','guard_name=eq.'+encodeURIComponent(name)),
+    sb('DELETE','patrols','guard_name=eq.'+encodeURIComponent(name)),
+    sb('DELETE','incidents','guard_name=eq.'+encodeURIComponent(name)),
+    sb('DELETE','sos_alerts','guard_name=eq.'+encodeURIComponent(name)),
+  ]);
+  // Deactivate guard
+  await patch('guards','id=eq.'+id,{active:false});
   await load();
-  toast('Διαγράφηκε');
+  toast('Φύλακας και όλα τα δεδομένα διαγράφηκαν','ok');
 }
 
 // ── LOCATIONS ────────────────────────────────────────
