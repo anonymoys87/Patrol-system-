@@ -216,12 +216,8 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
 <div id="tabs" style="display:none">
   <div style="display:flex;align-items:center;background:var(--s);border-bottom:1px solid var(--br)">
     <div class="tabs" style="flex:1;border-bottom:none">
-      <div class="tab on" onclick="tab('overview')"><span class="ti">👁️</span>ΕΙΚΟΝΑ</div>
-      <div class="tab" onclick="tab('guards')"><span class="ti">👥</span>ΦΥΛΑΚΕΣ</div>
-      <div class="tab" onclick="tab('locations')"><span class="ti">📍</span>ΧΩΡΟΙ</div>
-      <div class="tab" onclick="tab('payroll')"><span class="ti">💶</span>ΜΙΣΘΟΙ</div>
-      <div class="tab" onclick="tab('settings')"><span class="ti">⚙️</span>ΡΥΘΜΙΣΕΙΣ</div>
-    <div class="tab" onclick="tab('patrols')"><span class="ti">🗺️</span>ΠΕΡΙΠΟΛΙΕΣ</div>
+      <div class="tab on" data-tab="overview" onclick="tab('overview')"><span class="ti">👁️</span>ΕΙΚΟΝΑ</div>
+      <div class="tab" data-tab="settings" onclick="tab('settings')"><span class="ti">⚙️</span>ΡΥΘΜΙΣΕΙΣ</div>
     </div>
     <div style="display:flex;gap:8px;padding:0 12px;flex-shrink:0">
       <button onclick="logout()" style="padding:6px 14px;border-radius:6px;background:rgba(232,51,74,0.15);border:1px solid rgba(232,51,74,0.4);color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;letter-spacing:1px;white-space:nowrap">⏻ EXIT</button>
@@ -237,18 +233,99 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   </div>
 
   <div class="stats">
-    <div class="stat"><span class="stat-n g" id="stOn">0</span><div class="stat-l">Σε Βάρδια Τώρα</div></div>
-    <div class="stat"><span class="stat-n" id="stAll">0</span><div class="stat-l">Σύνολο Φυλάκων</div></div>
-    <div class="stat"><span class="stat-n y" id="stScans">0</span><div class="stat-l">Σκαν Σήμερα</div></div>
-    <div class="stat"><span class="stat-n r" id="stSOS">0</span><div class="stat-l">Ενεργά SOS</div></div>
+    <div class="stat" onclick="showQuick('onduty')" style="cursor:pointer"><span class="stat-n g" id="stOn">0</span><div class="stat-l">Σε Βάρδια Τώρα</div></div>
+    <div class="stat" onclick="showQuick('guards')" style="cursor:pointer"><span class="stat-n" id="stAll">0</span><div class="stat-l">Σύνολο Φυλάκων</div></div>
+    <div class="stat" onclick="showQuick('scans')" style="cursor:pointer"><span class="stat-n y" id="stScans">0</span><div class="stat-l">Σκαν Σήμερα</div></div>
+    <div class="stat" onclick="showQuick('sos')" style="cursor:pointer"><span class="stat-n r" id="stSOS">0</span><div class="stat-l">Ενεργά SOS</div></div>
+  </div>
+
+  <!-- Quick view popup -->
+  <div id="quickView" style="display:none;background:var(--s);border:1px solid var(--ac);border-radius:14px;padding:14px;margin-bottom:14px;animation:fadeIn 0.2s">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div id="quickTitle" style="font-size:13px;font-weight:700;color:var(--ac);letter-spacing:1px"></div>
+      <button onclick="document.getElementById('quickView').style.display='none'" style="background:transparent;border:none;color:var(--mu);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div id="quickBody"></div>
   </div>
 
   <div class="sec">Εικόνα ανά Χώρο Φύλαξης</div>
   <div class="loc-btns" id="locBtns"></div>
   <div id="locDetail"></div>
 
+
   <div class="div"></div>
 
+  <!-- ΧΑΡΤΗΣ ΠΕΡΙΠΟΛΙΩΝ -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="sec" style="margin:0">🗺️ Περιπολίες Live</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="patrolGuardFilter" onchange="loadPatrols()" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:6px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;cursor:pointer">
+        <option value="all">👮 Όλοι</option>
+      </select>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g);font-weight:700">
+        <div id="livePatrolDot" style="width:8px;height:8px;border-radius:50%;background:var(--g);animation:blink 1s infinite;display:none"></div>
+        <span id="livePatrolTxt" style="display:none">LIVE</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="activePatrolBanner" style="display:none;background:rgba(0,201,122,0.1);border:1px solid rgba(0,201,122,0.3);border-radius:12px;padding:12px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;color:var(--g)" id="activePatrolInfo">🚶 Ενεργή περιπολία...</div>
+    <div style="font-size:11px;color:var(--mu);margin-top:4px" id="activePatrolPoints">0 σημεία GPS</div>
+  </div>
+
+  <div style="position:relative;margin-bottom:14px">
+    <div id="patrolMapEl" style="height:380px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
+    <div id="patrolNoData" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--mu);z-index:2;background:var(--s);border-radius:14px">
+      <div style="font-size:40px">🗺️</div>
+      <div style="font-size:13px">Δεν υπάρχουν δεδομένα περιπολίας ακόμη</div>
+    </div>
+    <div id="patrolMapOverlay" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:rgba(6,14,31,0.9);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.3);border-radius:12px;padding:12px;max-width:280px">
+      <div id="mapLegend" style="font-size:12px;color:var(--tx)"></div>
+    </div>
+  </div>
+  <div class="div"></div>
+
+</div>
+
+<!-- GUARDS -->
+<div class="panel" id="panel-guards">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+  <button class="btn-add" onclick="openModal('mGuard')">+ ΠΡΟΣΘΗΚΗ ΦΥΛΑΚΑ</button>
+  <div class="sec">Προσωπικό Ασφαλείας</div>
+  <div id="guardsList"></div>
+</div>
+
+<!-- LOCATIONS -->
+<div class="panel" id="panel-locations">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+  <button class="btn-add" onclick="openModal('mLoc')">+ ΠΡΟΣΘΗΚΗ ΧΩΡΟΥ ΦΥΛΑΞΗΣ</button>
+  <div class="sec">Χώροι Φύλαξης</div>
+  <div id="locList"></div>
+</div>
+
+<!-- PAYROLL -->
+<div class="panel" id="panel-payroll">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+  <div class="sec">Μισθοδοσία</div>
+
+  <!-- Guard selector -->
+  <div class="card" style="margin-bottom:12px">
+    <label class="lbl">Επίλεξε Φύλακα</label>
+    <select id="payGuardSel" onchange="loadGuardPayroll()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:13px 14px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:14px;outline:none;cursor:pointer;margin-bottom:0">
+      <option value="">— Επιλέξτε Φύλακα —</option>
+    </select>
+  </div>
+
+  <!-- Guard payroll detail -->
+  <div id="payDetail"></div>
+</div>
+
+
+
+<!-- ΑΡΧΕΙΟ -->
+<div class="panel" id="panel-archive">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
   <!-- Αναφορές Συμβάντων -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <div class="sec" style="margin:0">⚠️ Αναφορές Συμβάντων</div>
@@ -308,82 +385,37 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   </div>
 
   <div id="shiftHistory"></div>
-</div>
 
-<!-- GUARDS -->
-<div class="panel" id="panel-guards">
-  <button class="btn-add" onclick="openModal('mGuard')">+ ΠΡΟΣΘΗΚΗ ΦΥΛΑΚΑ</button>
-  <div class="sec">Προσωπικό Ασφαλείας</div>
-  <div id="guardsList"></div>
-</div>
-
-<!-- LOCATIONS -->
-<div class="panel" id="panel-locations">
-  <button class="btn-add" onclick="openModal('mLoc')">+ ΠΡΟΣΘΗΚΗ ΧΩΡΟΥ ΦΥΛΑΞΗΣ</button>
-  <div class="sec">Χώροι Φύλαξης</div>
-  <div id="locList"></div>
-</div>
-
-<!-- PAYROLL -->
-<div class="panel" id="panel-payroll">
-  <div class="sec">Μισθοδοσία</div>
-
-  <!-- Guard selector -->
-  <div class="card" style="margin-bottom:12px">
-    <label class="lbl">Επίλεξε Φύλακα</label>
-    <select id="payGuardSel" onchange="loadGuardPayroll()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:13px 14px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:14px;outline:none;cursor:pointer;margin-bottom:0">
-      <option value="">— Επιλέξτε Φύλακα —</option>
-    </select>
-  </div>
-
-  <!-- Guard payroll detail -->
-  <div id="payDetail"></div>
-</div>
-
-
-
-<!-- SETTINGS --><!-- PATROLS -->
-<div class="panel" id="panel-patrols">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <div class="sec" style="margin:0">🗺️ Περιπολίες</div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <select id="patrolGuardFilter" onchange="loadPatrols()" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:6px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;cursor:pointer">
-        <option value="all">👮 Όλοι</option>
-      </select>
-      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g);font-weight:700">
-        <div id="livePatrolDot" style="width:8px;height:8px;border-radius:50%;background:var(--g);animation:blink 1s infinite;display:none"></div>
-        <span id="livePatrolTxt" style="display:none">LIVE</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Live patrol info banner -->
-  <div id="activePatrolBanner" style="display:none;background:rgba(0,201,122,0.1);border:1px solid rgba(0,201,122,0.3);border-radius:12px;padding:12px;margin-bottom:14px">
-    <div style="font-size:13px;font-weight:700;color:var(--g)" id="activePatrolInfo">🚶 Ενεργή περιπολία...</div>
-    <div style="font-size:11px;color:var(--mu);margin-top:4px" id="activePatrolPoints">0 σημεία GPS</div>
-  </div>
-
-  <!-- Map -->
-  <div style="position:relative;margin-bottom:14px">
-    <div id="patrolMapEl" style="height:420px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
-    <div id="patrolNoData" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--mu);z-index:2;background:var(--s);border-radius:14px">
-      <div style="font-size:40px">🗺️</div>
-      <div style="font-size:13px">Δεν υπάρχουν δεδομένα περιπολίας ακόμη</div>
-    </div>
-    <!-- Info overlay on map -->
-    <div id="patrolMapOverlay" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:rgba(6,14,31,0.9);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.3);border-radius:12px;padding:12px;max-width:280px">
-      <div id="mapLegend" style="font-size:12px;color:var(--tx)"></div>
-    </div>
-  </div>
-
-  <!-- Patrol history -->
+  <div class="div"></div>
   <div class="sec">Ιστορικό Περιπολιών</div>
   <div id="patrolList"><div class="empty">Φόρτωση...</div></div>
 </div>
 
+<!-- SETTINGS --><!-- PATROLS -->
+
 <!-- SETTINGS -->
 <div class="panel" id="panel-settings">
   <div class="sec">Ρυθμίσεις</div>
+
+  <!-- Settings menu -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <div onclick="tab('guards')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">👥</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΦΥΛΑΚΕΣ</div>
+    </div>
+    <div onclick="tab('locations')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">📍</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΧΩΡΟΙ</div>
+    </div>
+    <div onclick="tab('payroll')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">💶</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΜΙΣΘΟΙ</div>
+    </div>
+    <div onclick="tab('archive')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">📋</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΑΡΧΕΙΟ</div>
+    </div>
+  </div>
   <div class="card">
     <div style="font-size:11px;color:var(--mu);margin-bottom:12px;line-height:1.7">
       Προσθέστε τηλέφωνα επικοινωνίας για SOS.<br>
@@ -528,20 +560,11 @@ function logout(){
 }
 function showDash(){
   isLoggedIn=true;
-  // Restore last active tab
   const savedTab = localStorage.getItem('snts_tab')||'overview';
-  currentTab = savedTab;
   document.getElementById('loginWrap').style.display='none';
   document.getElementById('topbar').style.display='block';
   document.getElementById('tabs').style.display='block';
-  // Activate correct tab
-  const ts=['overview','guards','locations','payroll','settings','patrols'];
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
-  const tidx = ts.indexOf(currentTab);
-  if(tidx>=0) document.querySelectorAll('.tab')[tidx]?.classList.add('on');
-  const panel = document.getElementById('panel-'+currentTab);
-  if(panel) panel.classList.add('on');
+  tab(savedTab);
   load();
   liveTimer=setInterval(silentLoad,5000);
 }
@@ -1406,20 +1429,12 @@ function initPatrolMap(){
       attributionControl: true
     });
 
-    // Try CartoDB (works better with file://)
-    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // OpenStreetMap - κανονικός χάρτης με δρόμους
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: ['a','b','c','d'],
-      attribution: '© OpenStreetMap © CartoDB'
-    });
-    tileLayer.addTo(patrolMap);
-    
-    // Fallback to OSM if CartoDB fails
-    tileLayer.on('tileerror', function(){
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
-      }).addTo(patrolMap);
-    });
+      subdomains: ['a','b','c'],
+      attribution: '© OpenStreetMap'
+    }).addTo(patrolMap);
 
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
   } catch(e) {
@@ -1509,6 +1524,97 @@ function drawPatrolDots(pts, isLive){
   patrolDotLayer = L.layerGroup(layers).addTo(patrolMap);
 }
 
+function showQuick(type){
+  const qv=document.getElementById('quickView');
+  const qt=document.getElementById('quickTitle');
+  const qb=document.getElementById('quickBody');
+  let html='';
+  const activeShifts=shifts.filter(s=>s.status==='active');
+  if(type==='onduty'){
+    qt.textContent='🟢 ΣΕ ΒΑΡΔΙΑ ΤΩΡΑ';
+    if(!activeShifts.length) html='<div class="empty" style="padding:14px">Κανείς σε βάρδια</div>';
+    else html=activeShifts.map(s=>{
+      const start=new Date(s.start_time);
+      const durMin=Math.floor((Date.now()-start)/60000);
+      const durTxt=durMin>=60?Math.floor(durMin/60)+'ω '+(durMin%60)+'λ':durMin+'λ';
+      const g=guards.find(x=>x.full_name===s.guard_name)||{};
+      return '<div onclick="focusGuardOnMap(\''+esc(s.guard_name||'')+'\')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:6px">'
+        +'<div><div style="font-weight:700;font-size:13px">👮 '+esc(s.guard_name||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">📍 '+esc(s.location_name||'')+' · από '+start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+' · 🗺️ πάτα για χάρτη</div></div>'
+        +'<div style="text-align:right"><div style="font-family:monospace;font-size:13px;color:var(--g)">'+durTxt+'</div>'
+        +(g.phone?'<a href="tel:'+g.phone+'" onclick="event.stopPropagation()" style="font-size:11px;color:var(--ac);text-decoration:none">📞 Κλήση</a>':'')+'</div></div>';
+    }).join('');
+  }
+  else if(type==='guards'){
+    qt.textContent='👮 ΟΛΟΙ ΟΙ ΦΥΛΑΚΕΣ';
+    if(!guards.length) html='<div class="empty" style="padding:14px">Δεν υπάρχουν φύλακες</div>';
+    else html=guards.map(g=>{
+      const onDuty=activeShifts.some(s=>s.guard_name===g.full_name);
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:6px">'
+        +'<div><div style="font-weight:700;font-size:13px">'+(onDuty?'🟢':'⚪')+' '+esc(g.full_name)+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">📍 '+esc(g.location_name||'—')+'</div></div>'
+        +(g.phone?'<a href="tel:'+g.phone+'" style="font-size:11px;color:var(--ac);text-decoration:none">📞</a>':'')+'</div>';
+    }).join('');
+  }
+  else if(type==='scans'){
+    qt.textContent='📡 ΣΚΑΝ ΣΗΜΕΡΑ';
+    const today=new Date();today.setHours(0,0,0,0);
+    const todayScans=scans.filter(s=>new Date(s.scanned_at)>=today);
+    if(!todayScans.length) html='<div class="empty" style="padding:14px">Κανένα σκαν σήμερα</div>';
+    else html=todayScans.slice(0,20).map(s=>{
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--s2);border-radius:10px;margin-bottom:5px">'
+        +'<div><span style="font-weight:700;font-size:12px">'+esc(s.guard_name||'')+'</span>'
+        +'<span style="font-size:11px;color:var(--mu)"> · 📌 '+esc(s.nfc_tag||s.location_name||'')+'</span></div>'
+        +'<span style="font-family:monospace;font-size:11px;color:var(--y)">'+new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+'</span></div>';
+    }).join('');
+  }
+  else if(type==='sos'){
+    qt.textContent='🚨 ΕΝΕΡΓΑ SOS';
+    if(!sosAlerts.length) html='<div class="empty" style="padding:14px">✅ Κανένα ενεργό SOS</div>';
+    else html=sosAlerts.map(s=>{
+      return '<div style="padding:10px;background:rgba(232,51,74,0.08);border:1px solid var(--r);border-radius:10px;margin-bottom:6px">'
+        +'<div style="font-weight:700;font-size:13px;color:var(--r)">🚨 '+esc(s.guard_name||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">📍 '+esc(s.location_name||'')+' · '+new Date(s.created_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+'</div>'
+        +(s.lat?'<a href="https://maps.google.com/?q='+s.lat+','+s.lng+'" target="_blank" style="font-size:11px;color:var(--ac)">🗺️ Δες στο χάρτη</a>':'')+'</div>';
+    }).join('');
+  }
+  qb.innerHTML=html;
+  qv.style.display='block';
+  qv.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function loadPatrolHistoryList(){
+  const data = await get('patrols','order=start_time.desc&limit=30');
+  if(Array.isArray(data)){ patrols = data; renderPatrolList(patrols); }
+}
+
+async function focusGuardOnMap(guardName){
+  const gf = document.getElementById('patrolGuardFilter');
+  if(gf){
+    if(![...gf.options].some(o=>o.value===guardName)){
+      const o=document.createElement('option');o.value=guardName;o.textContent=guardName;gf.appendChild(o);
+    }
+    gf.value = guardName;
+  }
+  await loadPatrols();
+  document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function viewPatrolFromArchive(idx, isActive){
+  const p = patrols[idx];
+  if(!p) return;
+  tab('overview');
+  setTimeout(()=>{
+    showPatrolOnMap(p, isActive);
+    const pts = parsePatrolPoints(p.points);
+    if(pts.length && patrolMap){
+      const last = pts[pts.length-1];
+      patrolMap.setView([last.lat, last.lng], 17, {animate:true});
+    }
+    document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 400);
+}
+
 async function loadPatrols(){
   const filterGuard = document.getElementById('patrolGuardFilter')?.value||'all';
 
@@ -1544,12 +1650,32 @@ async function loadPatrols(){
     document.getElementById('activePatrolPoints').textContent =
       `${pts.length} σημεία GPS καταγεγραμμένα`;
     showPatrolOnMap(active, true);
+    // Zoom to last GPS point if available
+    if(pts.length > 0){
+      const last = pts[pts.length-1];
+      setTimeout(()=>{
+        if(patrolMap){
+          patrolMap.setView([last.lat, last.lng], 18, {animate:true});
+        }
+      }, 300);
+    }
   } else {
     banner.style.display='none';
     dot.style.display='none';
     txt.style.display='none';
-    // Show most recent patrol on map
-    if(patrols.length > 0) showPatrolOnMap(patrols[0], false);
+    // Show most recent patrol on map and zoom to it
+    if(patrols.length > 0){
+      showPatrolOnMap(patrols[0], false);
+      const pts = parsePatrolPoints(patrols[0].points);
+      if(pts.length > 0){
+        const last = pts[pts.length-1];
+        setTimeout(()=>{
+          if(patrolMap){
+            patrolMap.setView([last.lat, last.lng], 18, {animate:true});
+          }
+        }, 300);
+      }
+    }
   }
 
   renderPatrolList(patrols);
@@ -1641,7 +1767,7 @@ function renderPatrolList(patrols){
       Math.round((new Date(p.end_time)-new Date(p.start_time))/60000) : null;
     const isActive = p.status==='active' && !p.end_time && !p.ended_at;
     const pidx = patrols.indexOf(p);
-    return `<div class="card" style="border-left:3px solid ${isActive?'var(--g)':'var(--ac)'};margin-bottom:10px;cursor:pointer" onclick="showPatrolOnMap(patrols[${pidx}],${isActive})">
+    return `<div class="card" style="border-left:3px solid ${isActive?'var(--g)':'var(--ac)'};margin-bottom:10px;cursor:pointer" onclick="viewPatrolFromArchive(${pidx},${isActive})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div style="font-weight:700;font-size:14px">🚶 ${esc(p.guard_name||'—')}</div>
@@ -1775,21 +1901,24 @@ function exportXLS(){
 
 // ── TABS ─────────────────────────────────────────────
 function tab(t){
+  if(t==='patrols') t='overview';
   currentTab=t;
   try{ localStorage.setItem('snts_tab', t); }catch(e){}
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  const panel=document.getElementById('panel-'+t);
+  if(!panel){ t='overview'; }
   document.getElementById('panel-'+t).classList.add('on');
-  const ts=['overview','guards','locations','payroll','settings','patrols'];
-  const tidx = ts.indexOf(t);
-  if(tidx>=0) document.querySelectorAll('.tab')[tidx]?.classList.add('on');
+  // Highlight tab - sub-panels (guards/locations/payroll) highlight settings
+  const tabKey = ['guards','locations','payroll','archive'].includes(t) ? 'settings' : t;
+  document.querySelector('.tab[data-tab="'+tabKey+'"]')?.classList.add('on');
   if(t==='guards')renderGuards();
   if(t==='locations')renderLocations();
   if(t==='settings')renderSOSContacts();
   if(t==='payroll')initPayrollGuardSelect();
-  if(t==='patrols'){ initPatrolMap(); loadPatrols(); startPatrolLiveRefresh(); }
+  if(t==='overview'){ initPatrolMap(); loadPatrols(); startPatrolLiveRefresh(); }
   else { stopPatrolLiveRefresh(); }
-  if(t==='scans'){initScanFilters();renderFullScans();}
+  if(t==='archive'){ renderIncidents(); renderShiftHistory(); loadPatrolHistoryList(); }
 }
 
 // ── HELPERS ──────────────────────────────────────────
