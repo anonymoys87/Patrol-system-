@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SNTS Guard">
 <meta name="theme-color" content="#04080f">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#060e1f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>SNTS Guard</title>
@@ -157,6 +157,19 @@ body{font-family:'Exo 2',sans-serif;background:linear-gradient(160deg,#04080f 0%
   #tabs .tab { font-size: 9px; padding: 10px 4px; }
   .btn-g { font-size: 13px; padding: 14px; }
   #timerDisp { font-size: 36px; }
+}
+
+/* ── RESPONSIVE ─────────────────────────── */
+@media (min-width: 600px) {
+  .wrap { max-width: 560px !important; }
+  .btn-g, .btn { max-width: 500px !important; }
+}
+@media (min-width: 900px) {
+  .wrap { max-width: 700px !important; }
+  body { font-size: 15px; }
+}
+@media (min-width: 1200px) {
+  .wrap { max-width: 800px !important; }
 }
 </style>
 </head>
@@ -460,7 +473,7 @@ body{font-family:'Exo 2',sans-serif;background:linear-gradient(160deg,#04080f 0%
     </div>
 
     <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(event)">
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+    <input type="file" id="cameraInput" accept="image/*;capture=camera" capture="environment" style="display:none" onchange="handlePhoto(event)">
 
     <button onclick="submitIncident()" style="width:100%;padding:16px;border-radius:12px;background:linear-gradient(135deg,rgba(232,180,0,0.2),rgba(232,180,0,0.05));border:2px solid var(--y);color:var(--y);font-family:'Exo 2',sans-serif;font-size:15px;font-weight:900;letter-spacing:2px;cursor:pointer">
       📤 ΑΠΟΣΤΟΛΗ ΑΝΑΦΟΡΑΣ
@@ -1443,7 +1456,10 @@ let patrolTimer = null;       // setInterval for GPS recording
 let patrolPoints = [];        // local GPS points buffer
 
 function takePhoto(){
-  document.getElementById('cameraInput').click();
+  // Try direct camera first
+  const cam = document.getElementById('cameraInput');
+  cam.setAttribute('capture', 'environment');
+  cam.click();
 }
 function pickPhoto(){
   document.getElementById('photoInput').click();

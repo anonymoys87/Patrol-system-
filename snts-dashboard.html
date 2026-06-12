@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#060e1f">
 <title>SNTS Hellas — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -170,6 +170,27 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   padding: 3px 8px;
 }
 .patrol-tooltip::before { display:none; }
+
+/* ── RESPONSIVE ─────────────────────────────────────── */
+@media (min-width: 600px) {
+  .stats { grid-template-columns: repeat(4,1fr) !important; }
+  .modal-box { max-width: 520px; margin: 20px auto; border-radius: 20px; }
+  .modal { align-items: center; }
+}
+@media (min-width: 900px) {
+  .panel { padding: 24px 32px; max-width: 1000px; margin: 0 auto; }
+  #patrolMapEl { height: 500px !important; }
+  .card { padding: 18px; }
+}
+@media (min-width: 1200px) {
+  .panel { max-width: 1200px; padding: 28px 40px; }
+  #patrolMapEl { height: 580px !important; }
+  .topbar-inner { max-width: 1200px; padding: 0 20px; }
+  #panel-overview { display: grid; grid-template-columns: 1fr 400px; column-gap: 24px; align-items: start; }
+  #panel-overview > * { grid-column: 1; }
+  #panel-overview > #patrolMapEl,
+  #panel-overview > div:has(#patrolMapEl) { grid-column: 2; grid-row: 2 / 8; }
+}
 </style>
 </head>
 <body>
@@ -220,7 +241,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
       <div class="tab" data-tab="settings" onclick="tab('settings')"><span class="ti">⚙️</span>ΡΥΘΜΙΣΕΙΣ</div>
     </div>
     <div style="display:flex;gap:8px;padding:0 12px;flex-shrink:0">
-      <button onclick="logout()" style="padding:6px 14px;border-radius:6px;background:rgba(232,51,74,0.15);border:1px solid rgba(232,51,74,0.4);color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;letter-spacing:1px;white-space:nowrap">⏻ EXIT</button>
+      <button onclick="logout()" style="padding:6px 14px;border-radius:6px;background:rgba(232,51,74,0.15);border:1px solid rgba(232,51,74,0.4);color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;letter-spacing:1px;white-space:nowrap">⏻ LOGOUT</button>
     </div>
   </div>
 </div>
