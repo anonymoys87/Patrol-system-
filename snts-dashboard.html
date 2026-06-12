@@ -1471,7 +1471,7 @@ function initPatrolMap(){
 // Update live marker on map every 5 sec
 let lastPointCount = 0;
 async function updateLiveMarker(){
-  if(currentTab!=='patrols' || !patrolMap) return;
+  if(currentTab!=='overview' || !patrolMap) return;
   const data = await get('patrols','status=eq.active&order=start_time.desc&limit=1');
   if(!Array.isArray(data)||!data.length) return;
   const active = data[0];
@@ -1815,7 +1815,7 @@ function renderPatrolList(patrols){
 function startPatrolLiveRefresh(){
   stopPatrolLiveRefresh();
   patrolRefreshTimer = setInterval(()=>{
-    if(currentTab==='patrols'){
+    if(currentTab==='overview'){
       updateLiveMarker();
       loadPatrols();
     }
