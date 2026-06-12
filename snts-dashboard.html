@@ -238,10 +238,11 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   <div style="display:flex;align-items:center;background:var(--s);border-bottom:1px solid var(--br)">
     <div class="tabs" style="flex:1;border-bottom:none">
       <div class="tab on" data-tab="overview" onclick="tab('overview')"><span class="ti">👁️</span>ΕΙΚΟΝΑ</div>
-      <div class="tab" data-tab="settings" onclick="tab('settings')"><span class="ti">⚙️</span>ΡΥΘΜΙΣΕΙΣ</div>
+      <div class="tab" data-tab="settings" onclick="tab('settings')" style="display:none"></div>
     </div>
-    <div style="display:flex;gap:8px;padding:0 12px;flex-shrink:0">
-      <button onclick="logout()" style="padding:6px 14px;border-radius:6px;background:rgba(232,51,74,0.15);border:1px solid rgba(232,51,74,0.4);color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;letter-spacing:1px;white-space:nowrap">⏻ LOGOUT</button>
+    <div style="display:flex;gap:6px;padding:0 10px;flex-shrink:0;align-items:center">
+      <div onclick="tab('settings')" title="Ρυθμίσεις" style="width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid var(--br);color:var(--ac);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none">⚙️</div>
+      <div onclick="logout()" title="Logout" style="width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid rgba(232,51,74,0.3);color:var(--r);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none">⏻</div>
     </div>
   </div>
 </div>
