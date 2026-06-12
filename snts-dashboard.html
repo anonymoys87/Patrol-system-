@@ -184,12 +184,8 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
 }
 @media (min-width: 1200px) {
   .panel { max-width: 1200px; padding: 28px 40px; }
-  #patrolMapEl { height: 580px !important; }
+  #patrolMapEl { height: 600px !important; }
   .topbar-inner { max-width: 1200px; padding: 0 20px; }
-  #panel-overview { display: grid; grid-template-columns: 1fr 400px; column-gap: 24px; align-items: start; }
-  #panel-overview > * { grid-column: 1; }
-  #panel-overview > #patrolMapEl,
-  #panel-overview > div:has(#patrolMapEl) { grid-column: 2; grid-row: 2 / 8; }
 }
 </style>
 </head>
@@ -297,7 +293,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   </div>
 
   <div style="position:relative;margin-bottom:14px">
-    <div id="patrolMapEl" style="height:380px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
+    <div id="patrolMapEl" style="height:420px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
     <div id="patrolNoData" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--mu);z-index:2;background:var(--s);border-radius:14px">
       <div style="font-size:40px">🗺️</div>
       <div style="font-size:13px">Δεν υπάρχουν δεδομένα περιπολίας ακόμη</div>
