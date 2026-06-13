@@ -217,11 +217,12 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
 <!-- Γραμμή 3: Tabs + Κουμπιά -->
 <div id="tabs" style="display:none">
   <div style="display:flex;align-items:center;background:var(--s);border-bottom:1px solid var(--br)">
-    <div class="tabs" style="flex:1;border-bottom:none">
+    <div style="flex:1"></div>
+    <div class="tabs" style="border-bottom:none;display:flex;justify-content:center">
       <div class="tab on" data-tab="overview" onclick="tab('overview')"><span class="ti">👁️</span>ΕΙΚΟΝΑ</div>
       <div class="tab" data-tab="settings" onclick="tab('settings')" style="display:none"></div>
     </div>
-    <div style="display:flex;gap:6px;padding:0 10px;flex-shrink:0;align-items:center">
+    <div style="flex:1;display:flex;gap:6px;padding:0 10px;flex-shrink:0;align-items:center;justify-content:flex-end">
       <div onclick="tab('settings')" title="Ρυθμίσεις" style="width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid var(--br);color:var(--ac);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none">⚙️</div>
       <div onclick="logout()" title="Logout" style="width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid rgba(232,51,74,0.3);color:var(--r);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none">⏻</div>
     </div>
