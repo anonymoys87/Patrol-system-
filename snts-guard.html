@@ -1176,14 +1176,12 @@ function handleNfcRead(ev){
     }
   }catch(e){}
 
-  let tagName = parts.join(' ').trim();
+  // Χρησιμοποιούμε ΜΟΝΟ το πρώτο record (αγνοούμε κρυφά/παλιά records)
+  let tagName = (parts[0] || '').trim();
   if(!tagName){
     tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
-
-  // DEBUG: δείξε ακριβώς τι διαβάστηκε
-  console.log('NFC records:', parts, '| joined:', tagName);
-  toast('📡 ['+parts.length+' rec] "'+tagName+'" '+(isPatrolTag(tagName)?'= ΠΕΡΙΠΟΛΙΑ':'= απλό'), isPatrolTag(tagName)?'ok':'');
+  console.log('NFC records:', parts, '| using first:', tagName);
 
   logScan(tagName, serial||'NFC-'+Date.now());
 }
