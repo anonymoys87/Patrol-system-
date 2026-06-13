@@ -1143,6 +1143,9 @@ async function startBackgroundNFC(){
   }
 }
 
+// Serial του tag ΠΕΡΙΠΟΛΙΑΣ - μόνο αυτό ξεκινά/σταματά περιπολία
+const PATROL_TAG_SERIALS = ['04:48:7e:72:1c:12:90','04:48:7E:72:1C:12:90'];
+
 function handleNfcRead(ev){
   // Αγνόησε το ίδιο tag αν σκαναριστεί ξανά μέσα σε 4 δευτ.
   const serial = ev.serialNumber || '';
@@ -1192,12 +1195,28 @@ function handleNfcRead(ev){
     document.body.appendChild(dbg);
   }
   const recsInfo = parts.map((p,i)=>'  ['+i+'] "'+p+'"').join('\n');
+  const isPS = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
   dbg.textContent = '📡 NFC DEBUG (πάτα για κλείσιμο)\n'
+    + 'Serial: ' + serial + '\n'
+    + 'Είναι tag περιπολίας: ' + (isPS?'ΝΑΙ ✅':'ΟΧΙ') + '\n'
     + 'Records: ' + parts.length + '\n'
     + recsInfo + '\n'
-    + 'Χρήση: "' + tagName + '"\n'
-    + 'isPatrol: ' + isPatrolTag(tagName) + '\n'
+    + 'Όνομα: "' + tagName + '"\n'
     + 'activePatrol πριν: ' + (activePatrol ? 'ΝΑΙ' : 'ΟΧΙ');
+
+  // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
+  const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
+  if(isPatrolSerial){
+    if(window._patrolBusy){ toast('Περίμενε...','err'); }
+    else {
+      window._patrolBusy = true;
+      const done = ()=>{ window._patrolBusy = false; };
+      if(activePatrol){ endPatrol().finally(done); }
+      else { startPatrol().finally(done); }
+    }
+    logScan(tagName, serial||'NFC-'+Date.now(), true);
+    return;
+  }
 
   logScan(tagName, serial||'NFC-'+Date.now());
 }
@@ -1230,16 +1249,10 @@ async function isPatrolTag(name){
   return exact.includes(tn);
 }
 
-async function logScan(name, tag){
-  // Tag περιπολίας: λειτουργεί σαν το κουμπί ΕΝΑΡΞΗ/ΤΕΡΜΑΤΙΣΜΟΣ ΠΕΡΙΠΟΛΙΑΣ
-  if(isPatrolTag(name)){
-    if(window._patrolBusy){ toast('Περίμενε...','err'); }
-    else {
-      window._patrolBusy = true;
-      const done = ()=>{ window._patrolBusy = false; };
-      if(activePatrol){ endPatrol().finally(done); }
-      else { startPatrol().finally(done); }
-    }
+async function logScan(name, tag, skipPatrolCheck){
+  // Toggle περιπολίας μέσω ονόματος (για χειροκίνητη καταχώρηση)
+  if(!skipPatrolCheck && tag==='MANUAL' && isPatrolTag(name)){
+    if(activePatrol){ endPatrol(); } else { startPatrol(); }
   }
   const now = new Date();
   const guardName = activeShift?.guard || '—';
