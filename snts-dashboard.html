@@ -866,6 +866,7 @@ function renderShiftHistory(){
           <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:3px;color:var(--y)">${dur}</div>
         </div>
       </div>
+      ${renderChecklistHtml(s.notes, s.handover_from)}
     </div>`;
   }).join('');
 }
@@ -1673,6 +1674,31 @@ async function clearHistory(type){
   }catch(e){ toast('Σφάλμα διαγραφής','err'); }
 }
 
+function renderChecklistHtml(notes, handoverFrom){
+  if(!notes) return '';
+  var cl;
+  try{ cl = JSON.parse(notes); }catch(e){ return ''; }
+  if(!cl || typeof cl !== 'object') return '';
+  var labels = {asirmatos:'Ασύρματος',fakos:'Φακός',kinito:'Κινητό',roloi:'Ρολόι',fakelos:'Φάκελος',vivlia:'Βιβλία',kleidia:'Κλειδιά',adiavrocho:'Αδιάβροχο',alexisfairo:'Αλεξίσφαιρο',patrol:'Όχημα Patrol',exot:'Εξωτ. όχημα',esot:'Εσωτ. όχημα',ladia:'Λάδια',aeras:'Αέρας',antips:'Αντιψυκτικό',mpat:'Μπαταρία',frena:'Φρένα'};
+  var items = '';
+  for(var k in cl){
+    if(k==='notes'||k==='car_num') continue;
+    var v = cl[k];
+    if(v==='ΝΑΙ'||v===true){
+      items += '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(0,201,122,0.12);color:#00e676;border:1px solid rgba(0,201,122,0.3);margin:2px">'+(labels[k]||k)+' ✓</span> ';
+    } else if(v==='ΟΧΙ'||v===false){
+      items += '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,23,68,0.1);color:#ff1744;border:1px solid rgba(255,23,68,0.3);margin:2px">'+(labels[k]||k)+' ✗</span> ';
+    }
+  }
+  var carTxt = cl.car_num ? '<span style="font-size:10px;color:#2979ff;margin-left:6px">🚗 '+esc(cl.car_num)+'</span>' : '';
+  var notesTxt = cl.notes ? '<div style="font-size:11px;color:#cfe;margin-top:6px;padding:6px 8px;background:rgba(41,121,255,0.08);border-radius:6px">📝 '+esc(cl.notes)+'</div>' : '';
+  var ho = handoverFrom && handoverFrom!=='—' ? '<span style="font-size:10px;color:#90a;margin-left:6px">↩ από '+esc(handoverFrom)+'</span>' : '';
+  if(!items && !notesTxt) return '';
+  return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br)">'
+    + '<div style="font-size:9px;color:var(--mu);letter-spacing:2px;margin-bottom:6px">📋 ΒΙΒΛΙΟ ΣΥΜΒΑΝΤΩΝ / ΠΑΡΑΛΑΒΗ'+ho+carTxt+'</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:3px">'+items+'</div>'+notesTxt+'</div>';
+}
+
 function viewPatrolFromArchive(idx, isActive){
   const p = patrols[idx];
   if(!p) return;
@@ -2129,6 +2155,7 @@ async function applyHistoryFilters(){
             <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:2px;color:var(--y)">${dur}</div>
           </div>
         </div>
+        ${renderChecklistHtml(s.notes, s.handover_from)}
       </div>`;
     }).join('');
   }
