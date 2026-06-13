@@ -1196,6 +1196,7 @@ function handleNfcRead(ev){
   if(!tagName){
     tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
+  toast('Όνομα: "'+tagName+'" (από '+parts.length+' records)');
 
 
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
