@@ -1130,8 +1130,8 @@ async function startNFC(){
         tagName = 'Σημείο-' + (ev.serialNumber||Date.now()).toString().slice(-6);
       }
 
-      // Ειδικό tag περιπολίας: toggle έναρξη/λήξη
-      const tn = tagName.trim().toUpperCase();
+      // Ειδικό tag περιπολίας: toggle έναρξη/λήξη (αγνοεί τόνους/πεζά)
+      const tn = tagName.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       if(tn.includes('ΠΕΡΙΠΟΛΙΑ') || tn.includes('PATROL')){
         if(activePatrol){
           endPatrol();
