@@ -1107,38 +1107,29 @@ async function startNFC(){
       if(!scanning)return;
       cancelNFC();
 
-      // Διαβάζουμε το όνομα από το tag
-      let tagName = '';
-
-      // Πρώτα ψάχνουμε για text record μέσα στο tag
-      if(ev.message && ev.message.records && ev.message.records.length > 0){
-        for(const record of ev.message.records){
-          if(record.recordType === 'text'){
-            const decoder = new TextDecoder(record.encoding || 'utf-8');
-            tagName = decoder.decode(record.data);
-            break;
-          } else if(record.recordType === 'url'){
-            const decoder = new TextDecoder();
-            tagName = decoder.decode(record.data);
-            break;
+      // Διαβάζουμε ΟΛΑ τα records από το tag
+      let parts = [];
+      try{
+        if(ev.message && ev.message.records){
+          for(const record of ev.message.records){
+            try{
+              if(record.recordType === 'text'){
+                const decoder = new TextDecoder(record.encoding || 'utf-8');
+                parts.push(decoder.decode(record.data));
+              } else if(record.recordType === 'url' || record.recordType === 'absolute-url'){
+                parts.push(new TextDecoder().decode(record.data));
+              } else if(record.data){
+                parts.push(new TextDecoder().decode(record.data));
+              }
+            }catch(e){}
           }
         }
-      }
+      }catch(e){}
 
-      // Αν δεν βρήκαμε text, χρησιμοποιούμε το serial number
+      let tagName = parts.join(' ').trim();
       if(!tagName){
         tagName = 'Σημείο-' + (ev.serialNumber||Date.now()).toString().slice(-6);
       }
-
-      // Ειδικό tag περιπολίας: toggle έναρξη/λήξη (αγνοεί τόνους/πεζά)
-      const tn = tagName.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-      if(tn.indexOf('ΠΕΡΙΠΟΛ')>=0 || tn.indexOf('PATROL')>=0 || tn.indexOf('PERIPOL')>=0){
-        logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
-        if(activePatrol){ endPatrol(); }
-        else { startPatrol(); }
-        return;
-      }
-      toast('📡 Tag: ' + tagName);
 
       logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
     };
@@ -1157,7 +1148,17 @@ function logManual(){
   document.getElementById('cpName').value='';
 }
 
+async function isPatrolTag(name){
+  const tn = String(name||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  return tn.indexOf('ΠΕΡΙΠΟΛ')>=0 || tn.indexOf('PATROL')>=0 || tn.indexOf('PERIPOL')>=0;
+}
+
 async function logScan(name, tag){
+  // Tag περιπολίας: λειτουργεί σαν το κουμπί ΕΝΑΡΞΗ/ΤΕΡΜΑΤΙΣΜΟΣ ΠΕΡΙΠΟΛΙΑΣ
+  if(isPatrolTag(name)){
+    if(activePatrol){ endPatrol(); }
+    else { startPatrol(); }
+  }
   const now = new Date();
   const guardName = activeShift?.guard || '—';
   const scan = {
