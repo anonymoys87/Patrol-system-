@@ -1132,7 +1132,7 @@ async function startNFC(){
 
       // Ειδικό tag περιπολίας: toggle έναρξη/λήξη (αγνοεί τόνους/πεζά)
       const tn = tagName.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-      console.log('NFC tag read:', tagName, '-> normalized:', tn);
+      toast('📡 Tag: ' + tagName);
       if(tn.indexOf('ΠΕΡΙΠΟΛ')>=0 || tn.indexOf('PATROL')>=0 || tn.indexOf('PERIPOL')>=0){
         if(activePatrol){
           endPatrol();
