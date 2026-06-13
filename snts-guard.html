@@ -1130,6 +1130,20 @@ async function startNFC(){
         tagName = 'Σημείο-' + (ev.serialNumber||Date.now()).toString().slice(-6);
       }
 
+      // Ειδικό tag περιπολίας: toggle έναρξη/λήξη
+      const tn = tagName.trim().toUpperCase();
+      if(tn.includes('ΠΕΡΙΠΟΛΙΑ') || tn.includes('PATROL')){
+        if(activePatrol){
+          endPatrol();
+          toast('🏁 Λήξη περιπολίας (NFC)','ok');
+        } else {
+          startPatrol();
+          toast('🚶 Έναρξη περιπολίας (NFC)','ok');
+        }
+        logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
+        return;
+      }
+
       logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
     };
     ndef.onreadingerror = ()=>{cancelNFC();toast('Σφάλμα tag','err');};
