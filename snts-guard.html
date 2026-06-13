@@ -1132,18 +1132,13 @@ async function startNFC(){
 
       // Ειδικό tag περιπολίας: toggle έναρξη/λήξη (αγνοεί τόνους/πεζά)
       const tn = tagName.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-      toast('📡 Tag: ' + tagName);
       if(tn.indexOf('ΠΕΡΙΠΟΛ')>=0 || tn.indexOf('PATROL')>=0 || tn.indexOf('PERIPOL')>=0){
-        if(activePatrol){
-          endPatrol();
-          toast('🏁 Λήξη περιπολίας (NFC)','ok');
-        } else {
-          startPatrol();
-          toast('🚶 Έναρξη περιπολίας (NFC)','ok');
-        }
         logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
+        if(activePatrol){ endPatrol(); }
+        else { startPatrol(); }
         return;
       }
+      toast('📡 Tag: ' + tagName);
 
       logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
     };
