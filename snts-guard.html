@@ -1184,19 +1184,11 @@ function handleNfcRead(ev){
     }
   }catch(e){}
 
-  // Διάλεξε όνομα: αν ΔΕΝ είναι tag περιπολίας, αγνόησε κρυφά "περιπολια" records
-  const isPatrolSer = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
-  let nameParts = parts.slice();
-  if(!isPatrolSer){
-    // κράτα μόνο records που ΔΕΝ είναι λέξη περιπολίας
-    const filtered = nameParts.filter(p=>!isPatrolTag(p));
-    if(filtered.length) nameParts = filtered;
-  }
-  let tagName = (nameParts[0] || '').trim();
+  // Όνομα από το πρώτο record
+  let tagName = (parts[0] || '').trim();
   if(!tagName){
     tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
-  toast('Όνομα: "'+tagName+'" (από '+parts.length+' records)');
 
 
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
