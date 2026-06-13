@@ -650,9 +650,30 @@ function startApp(){
   }
 }
 
+function restorePatrol(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('snts_patrol')||'null');
+    if(!saved || !saved.id) return;
+    activePatrol = saved;
+    // Επανεκκίνηση GPS καταγραφής και UI
+    patrolTimer = setInterval(recordPatrolPoint, 3000);
+    startPatrolTimerDisplay();
+    const btn = document.getElementById('patrolBtn');
+    if(btn){
+      btn.style.background = 'linear-gradient(135deg,rgba(232,51,74,0.2),rgba(232,51,74,0.05))';
+      btn.style.borderColor = 'var(--r)';
+      btn.style.color = 'var(--r)';
+      btn.textContent = '🛑 ΤΕΡΜΑΤΙΣΜΟΣ ΠΕΡΙΠΟΛΙΑΣ';
+    }
+    const st = document.getElementById('patrolStatus');
+    if(st) st.style.display = 'block';
+  }catch(e){}
+}
+
 window.onload = async () => {
   startGPS();
   updateCounters();
+  restorePatrol();
   await loadSOSContacts();
   if(thisLoc) startHeartbeat();
 
@@ -1156,8 +1177,13 @@ async function isPatrolTag(name){
 async function logScan(name, tag){
   // Tag περιπολίας: λειτουργεί σαν το κουμπί ΕΝΑΡΞΗ/ΤΕΡΜΑΤΙΣΜΟΣ ΠΕΡΙΠΟΛΙΑΣ
   if(isPatrolTag(name)){
-    if(activePatrol){ endPatrol(); }
-    else { startPatrol(); }
+    if(window._patrolBusy){ toast('Περίμενε...','err'); }
+    else {
+      window._patrolBusy = true;
+      const done = ()=>{ window._patrolBusy = false; };
+      if(activePatrol){ endPatrol().finally(done); }
+      else { startPatrol().finally(done); }
+    }
   }
   const now = new Date();
   const guardName = activeShift?.guard || '—';
@@ -1346,6 +1372,7 @@ async function startPatrol(){
 
   activePatrol = { id: res[0].id, startTime: Date.now() };
   patrolPoints = [{lat:gps.lat, lng:gps.lng, t:new Date().toISOString()}];
+  try{ localStorage.setItem('snts_patrol', JSON.stringify(activePatrol)); }catch(e){}
 
   // Update UI
   document.getElementById('patrolBtn').style.background = 'linear-gradient(135deg,rgba(232,51,74,0.2),rgba(232,51,74,0.05))';
@@ -1410,6 +1437,7 @@ async function endPatrol(){
 
   activePatrol = null;
   patrolPoints = [];
+  try{ localStorage.removeItem('snts_patrol'); }catch(e){}
 
   // Reset UI
   document.getElementById('patrolBtn').style.background = 'linear-gradient(135deg,rgba(26,110,245,0.15),rgba(26,110,245,0.05))';
