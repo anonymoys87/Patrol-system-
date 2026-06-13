@@ -329,6 +329,16 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
 <!-- ΑΡΧΕΙΟ -->
 <div class="panel" id="panel-archive">
 <button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+<div style="background:rgba(232,51,74,0.06);border:1px solid rgba(232,51,74,0.25);border-radius:12px;padding:12px;margin-bottom:16px">
+  <div style="font-size:12px;font-weight:700;color:var(--r);margin-bottom:8px">🗑️ Καθαρισμός Ιστορικού</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="clearHistory('patrol_scans')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Σκαν</button>
+    <button onclick="clearHistory('shifts')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Βάρδιες</button>
+    <button onclick="clearHistory('patrols')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Περιπολίες</button>
+    <button onclick="clearHistory('incidents')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Συμβάντα</button>
+    <button onclick="clearHistory('all')" style="background:rgba(232,51,74,0.15);border:1px solid var(--r);border-radius:8px;padding:8px 12px;color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">ΟΛΑ</button>
+  </div>
+</div>
   <!-- Αναφορές Συμβάντων -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <div class="sec" style="margin:0">⚠️ Αναφορές Συμβάντων</div>
@@ -1641,6 +1651,26 @@ function focusScanOnMap(lat, lng, name){
     }
     document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
   }, 200);
+}
+
+async function clearHistory(type){
+  const labels = {patrol_scans:'τα σκαν', shifts:'τις βάρδιες', patrols:'τις περιπολίες', incidents:'τα συμβάντα', all:'ΟΛΟ το ιστορικό'};
+  if(!confirm('Διαγραφή '+labels[type]+';\n\nΑυτό ΔΕΝ αναιρείται!')) return;
+  try{
+    if(type==='all'){
+      await Promise.all([
+        sb('DELETE','patrol_scans','id=not.is.null'),
+        sb('DELETE','shifts','id=not.is.null'),
+        sb('DELETE','patrols','id=not.is.null'),
+        sb('DELETE','incidents','id=not.is.null')
+      ]);
+    } else {
+      await sb('DELETE', type, 'id=not.is.null');
+    }
+    toast('Διαγράφηκε','ok');
+    await load();
+    renderIncidents(); renderShiftHistory(); loadPatrolHistoryList();
+  }catch(e){ toast('Σφάλμα διαγραφής','err'); }
 }
 
 function viewPatrolFromArchive(idx, isActive){
