@@ -674,6 +674,8 @@ window.onload = async () => {
   startGPS();
   updateCounters();
   restorePatrol();
+  startBackgroundNFC();
+  document.addEventListener('click', ()=>{ startBackgroundNFC(); }, {once:true});
   await loadSOSContacts();
   if(thisLoc) startHeartbeat();
 
@@ -1115,53 +1117,86 @@ async function doSOSCall(phone){
   window.location.href='tel:'+phone.replace(/\s/g,'');
 }
 
-// ── NFC ──
+// ── NFC: ΣΥΝΕΧΕΣ ΣΚΑΝΑΡΙΣΜΑ ──
+let bgNfc = false;
+let lastNfcSerial = '';
+let lastNfcTime = 0;
+
+async function startBackgroundNFC(){
+  if(bgNfc) return true;
+  if(!('NDEFReader' in window)) return false;
+  try{
+    const ndef = new NDEFReader();
+    await ndef.scan();
+    ndef.onreading = (ev)=>{ handleNfcRead(ev); };
+    bgNfc = true;
+    // Δείξε ένδειξη ότι το NFC είναι ενεργό
+    const btn = document.getElementById('nfcBtn');
+    if(btn){
+      const lbl = btn.querySelector('span:last-child');
+      if(lbl) lbl.textContent = 'NFC ΕΝΕΡΓΟ';
+    }
+    return true;
+  }catch(e){
+    console.log('NFC start failed:', e);
+    return false;
+  }
+}
+
+function handleNfcRead(ev){
+  // Αγνόησε το ίδιο tag αν σκαναριστεί ξανά μέσα σε 4 δευτ.
+  const serial = ev.serialNumber || '';
+  const now = Date.now();
+  if(serial && serial === lastNfcSerial && (now - lastNfcTime) < 4000) return;
+  lastNfcSerial = serial;
+  lastNfcTime = now;
+
+  if(navigator.vibrate) navigator.vibrate(100);
+
+  // Κλείσε το overlay αν είναι ανοιχτό
+  document.getElementById('nfcOv')?.classList.remove('on');
+
+  // Διαβάζουμε ΟΛΑ τα records από το tag
+  let parts = [];
+  try{
+    if(ev.message && ev.message.records){
+      for(const record of ev.message.records){
+        try{
+          if(record.recordType === 'text'){
+            const decoder = new TextDecoder(record.encoding || 'utf-8');
+            parts.push(decoder.decode(record.data));
+          } else if(record.recordType === 'url' || record.recordType === 'absolute-url'){
+            parts.push(new TextDecoder().decode(record.data));
+          } else if(record.data){
+            parts.push(new TextDecoder().decode(record.data));
+          }
+        }catch(e){}
+      }
+    }
+  }catch(e){}
+
+  let tagName = parts.join(' ').trim();
+  if(!tagName){
+    tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
+  }
+
+  logScan(tagName, serial||'NFC-'+Date.now());
+}
+
 async function startNFC(){
   if(!('NDEFReader' in window)){toast('NFC: Χρήση Chrome Android','err');return;}
-  try{
-    document.getElementById('nfcOv').classList.add('on');
-    scanning=true;
-    const ndef = new NDEFReader();
-    nfcCtrl = new AbortController();
-    await ndef.scan({signal:nfcCtrl.signal});
-    ndef.onreading = (ev)=>{
-      if(!scanning)return;
-      cancelNFC();
-
-      // Διαβάζουμε ΟΛΑ τα records από το tag
-      let parts = [];
-      try{
-        if(ev.message && ev.message.records){
-          for(const record of ev.message.records){
-            try{
-              if(record.recordType === 'text'){
-                const decoder = new TextDecoder(record.encoding || 'utf-8');
-                parts.push(decoder.decode(record.data));
-              } else if(record.recordType === 'url' || record.recordType === 'absolute-url'){
-                parts.push(new TextDecoder().decode(record.data));
-              } else if(record.data){
-                parts.push(new TextDecoder().decode(record.data));
-              }
-            }catch(e){}
-          }
-        }
-      }catch(e){}
-
-      let tagName = parts.join(' ').trim();
-      if(!tagName){
-        tagName = 'Σημείο-' + (ev.serialNumber||Date.now()).toString().slice(-6);
-      }
-
-      logScan(tagName, ev.serialNumber||'NFC-'+Date.now());
-    };
-    ndef.onreadingerror = ()=>{cancelNFC();toast('Σφάλμα tag','err');};
-  }catch(e){cancelNFC();if(e.name!=='AbortError')toast('NFC σφάλμα','err');}
+  const ok = await startBackgroundNFC();
+  if(ok){
+    toast('📡 NFC ενεργό — πλησίασε το tag!','ok');
+  } else {
+    toast('Δώσε άδεια NFC στο Chrome','err');
+  }
 }
+
 function cancelNFC(){
-  scanning=false;
-  try{if(nfcCtrl)nfcCtrl.abort();}catch(e){}
-  document.getElementById('nfcOv').classList.remove('on');
+  document.getElementById('nfcOv')?.classList.remove('on');
 }
+
 function logManual(){
   const name = document.getElementById('cpName').value.trim();
   if(!name){toast('Εισάγετε όνομα σημείου','err');document.getElementById('cpName').focus();return;}
