@@ -1165,25 +1165,35 @@ function handleNfcRead(ev){
     if(ev.message && ev.message.records){
       for(const record of ev.message.records){
         try{
-          if(record.recordType === 'text'){
-            const decoder = new TextDecoder(record.encoding || 'utf-8');
-            const t = decoder.decode(record.data).trim();
-            if(t) parts.push(t);
-          } else if(record.recordType === 'url' || record.recordType === 'absolute-url'){
-            const u = new TextDecoder().decode(record.data).trim();
-            if(u) parts.push(u);
+          let txt = '';
+          try{
+            // Δοκίμασε κατευθείαν decode (Web NFC δίνει ήδη καθαρό κείμενο)
+            txt = new TextDecoder(record.encoding||'utf-8').decode(record.data).trim();
+          }catch(e){}
+          // Αν το αποτέλεσμα έχει "σκουπίδια" στην αρχή (lang prefix), καθάρισέ το
+          if(record.recordType === 'text' && txt){
+            // Αφαίρεσε τυχόν language code prefix (π.χ. "en", "el") αν υπάρχει
+            txt = txt.replace(/^[a-z]{2}(?=[Α-Ωα-ωA-Z])/,'');
           }
-          // αγνοούμε empty/binary records
+          if(txt) parts.push(txt);
         }catch(e){}
       }
     }
   }catch(e){}
 
-  // Χρησιμοποιούμε ΜΟΝΟ το πρώτο record (αγνοούμε κρυφά/παλιά records)
-  let tagName = (parts[0] || '').trim();
+  // Διάλεξε όνομα: αν ΔΕΝ είναι tag περιπολίας, αγνόησε κρυφά "περιπολια" records
+  const isPatrolSer = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
+  let nameParts = parts.slice();
+  if(!isPatrolSer){
+    // κράτα μόνο records που ΔΕΝ είναι λέξη περιπολίας
+    const filtered = nameParts.filter(p=>!isPatrolTag(p));
+    if(filtered.length) nameParts = filtered;
+  }
+  let tagName = (nameParts[0] || '').trim();
   if(!tagName){
     tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
+
 
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
   const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
