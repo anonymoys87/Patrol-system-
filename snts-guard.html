@@ -1185,25 +1185,6 @@ function handleNfcRead(ev){
     tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
 
-  // ΜΟΝΙΜΟ DEBUG BOX
-  let dbg = document.getElementById('nfcDebug');
-  if(!dbg){
-    dbg = document.createElement('div');
-    dbg.id = 'nfcDebug';
-    dbg.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#000;color:#0f0;font-family:monospace;font-size:11px;padding:8px;border-bottom:2px solid #0f0;white-space:pre-wrap;word-break:break-all';
-    dbg.onclick = ()=>dbg.remove();
-    document.body.appendChild(dbg);
-  }
-  const recsInfo = parts.map((p,i)=>'  ['+i+'] "'+p+'"').join('\n');
-  const isPS = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
-  dbg.textContent = '📡 NFC DEBUG (πάτα για κλείσιμο)\n'
-    + 'Serial: ' + serial + '\n'
-    + 'Είναι tag περιπολίας: ' + (isPS?'ΝΑΙ ✅':'ΟΧΙ') + '\n'
-    + 'Records: ' + parts.length + '\n'
-    + recsInfo + '\n'
-    + 'Όνομα: "' + tagName + '"\n'
-    + 'activePatrol πριν: ' + (activePatrol ? 'ΝΑΙ' : 'ΟΧΙ');
-
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
   const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
   if(isPatrolSerial){
