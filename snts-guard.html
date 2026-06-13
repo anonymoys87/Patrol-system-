@@ -1198,6 +1198,7 @@ function handleNfcRead(ev){
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
   const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
   if(isPatrolSerial){
+    const wasActive = !!activePatrol;
     if(window._patrolBusy){ toast('Περίμενε...','err'); }
     else {
       window._patrolBusy = true;
@@ -1205,7 +1206,9 @@ function handleNfcRead(ev){
       if(activePatrol){ endPatrol().finally(done); }
       else { startPatrol().finally(done); }
     }
-    logScan(tagName, serial||'NFC-'+Date.now(), true);
+    // Καθαρό όνομα στο ιστορικό
+    const patrolLabel = wasActive ? 'ΛΗΞΗ ΠΕΡΙΠΟΛΙΑΣ' : 'ΕΝΑΡΞΗ ΠΕΡΙΠΟΛΙΑΣ';
+    logScan(patrolLabel, serial||'NFC-'+Date.now(), true);
     return;
   }
 
