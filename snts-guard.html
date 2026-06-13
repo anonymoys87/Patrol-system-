@@ -1255,8 +1255,9 @@ async function logScan(name, tag){
   playBeep();
   const ok = document.getElementById('scanOk');
   ok.className='scan-ok on';
-  ok.textContent=`✓ ${name} — ${scan.time}`;
-  setTimeout(()=>ok.className='scan-ok',3000);
+  const isP = isPatrolTag(name);
+  ok.textContent = (isP ? '🚶 ΠΕΡΙΠΟΛΙΑ: ' : '✓ ΣΗΜΕΙΟ: ') + name + ' — ' + scan.time;
+  setTimeout(()=>ok.className='scan-ok',6000);
   document.getElementById('cpName').value='';
   document.getElementById('lastScan').textContent=`${name} — ${scan.time}`;
 
