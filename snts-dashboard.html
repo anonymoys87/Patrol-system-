@@ -2018,7 +2018,7 @@ function tab(t){
   if(t==='payroll')initPayrollGuardSelect();
   if(t==='overview'){ initPatrolMap(); loadPatrols(); startPatrolLiveRefresh(); }
   else { stopPatrolLiveRefresh(); }
-  if(t==='archive'){ renderIncidents(); renderShiftHistory(); loadPatrolHistoryList(); }
+  if(t==='archive'){ load().then(()=>{ renderIncidents(); renderShiftHistory(); loadPatrolHistoryList(); }); }
 }
 
 // ── HELPERS ──────────────────────────────────────────
@@ -2109,7 +2109,7 @@ async function applyHistoryFilters(){
     if(locF!=='all'&&s.location_name!==locF)return false;
     if(guardF!=='all'&&s.guard_name!==guardF)return false;
     if(from&&new Date(s.start_time)<from)return false;
-    if(to&&new Date(s.start_time)>to)return false;
+    if(to){const t2=new Date(to);t2.setHours(23,59,59,999);if(new Date(s.start_time)>t2)return false;}
     return true;
   });
 
