@@ -287,6 +287,9 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
     <div id="patrolMapOverlay" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:rgba(6,14,31,0.9);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.3);border-radius:12px;padding:12px;max-width:280px">
       <div id="mapLegend" style="font-size:12px;color:var(--tx)"></div>
     </div>
+    <button id="recenterMapBtn" onclick="recenterMap()" style="display:none;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(6,14,31,0.92);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.5);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,0.5)">
+      📍 Επιστροφή στο στίγμα
+    </button>
   </div>
   <div class="div"></div>
 
@@ -1475,9 +1478,43 @@ function initPatrolMap(){
     }, null, {position:'topright', collapsed:false}).addTo(patrolMap);
 
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
+
+    // Track if user has manually moved/zoomed the map
+    patrolMap.on('dragstart zoomstart', function(e){
+      // Ignore programmatic moves (fired via setView/flyTo)
+      if(e.originalEvent){
+        userHasMovedMap = true;
+        const btn = document.getElementById('recenterMapBtn');
+        if(btn) btn.style.display = 'block';
+      }
+    });
+
   } catch(e) {
     console.error('Map init error:', e);
   }
+}
+
+// Flag: true when user has manually panned/zoomed
+let userHasMovedMap = false;
+
+// Helper: smart setView — skips if user has moved the map
+function mapSetView(lat, lng, zoom, opts){
+  if(userHasMovedMap) return;
+  if(patrolMap) patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
+}
+
+// Button: snap back to last known GPS position
+function recenterMap(){
+  userHasMovedMap = false;
+  const btn = document.getElementById('recenterMapBtn');
+  if(btn) btn.style.display = 'none';
+  // Find last GPS point from active or most recent patrol
+  const active = patrols.find(p=>p.status==='active') || patrols[0];
+  if(!active) return;
+  const pts = parsePatrolPoints(active.points);
+  if(!pts.length) return;
+  const last = pts[pts.length-1];
+  if(patrolMap) patrolMap.setView([last.lat, last.lng], 18, {animate:true});
 }
 
 // Update live marker on map every 5 sec
@@ -1499,8 +1536,8 @@ async function updateLiveMarker(){
   // Update live marker position
   if(patrolMarkerEnd){
     patrolMarkerEnd.setLatLng([last.lat, last.lng]);
-    // Only pan if marker is outside visible area
-    if(!patrolMap.getBounds().contains([last.lat, last.lng])){
+    // Only pan if user hasn't manually navigated away
+    if(!userHasMovedMap && !patrolMap.getBounds().contains([last.lat, last.lng])){
       patrolMap.panTo([last.lat, last.lng], {animate:true, duration:0.8});
     }
   }
@@ -1643,6 +1680,7 @@ async function focusGuardOnMap(guardName){
 function focusScanOnMap(lat, lng, name){
   document.getElementById('quickView').style.display='none';
   if(!patrolMap){ initPatrolMap(); }
+  userHasMovedMap = false; // user explicitly asked to go here
   setTimeout(()=>{
     if(patrolMap){
       patrolMap.setView([lat,lng], 18, {animate:true});
@@ -1704,6 +1742,7 @@ function viewPatrolFromArchive(idx, isActive){
   const p = patrols[idx];
   if(!p) return;
   tab('overview');
+  userHasMovedMap = false; // user explicitly asked to go here
   setTimeout(()=>{
     showPatrolOnMap(p, isActive);
     const pts = parsePatrolPoints(p.points);
@@ -1750,30 +1789,22 @@ async function loadPatrols(){
     document.getElementById('activePatrolPoints').textContent =
       `${pts.length} σημεία GPS καταγεγραμμένα`;
     showPatrolOnMap(active, true);
-    // Zoom to last GPS point if available
+    // Zoom to last GPS point if available (only if user hasn't navigated away)
     if(pts.length > 0){
       const last = pts[pts.length-1];
-      setTimeout(()=>{
-        if(patrolMap){
-          patrolMap.setView([last.lat, last.lng], 18, {animate:true});
-        }
-      }, 300);
+      setTimeout(()=>{ mapSetView(last.lat, last.lng, 18); }, 300);
     }
   } else {
     banner.style.display='none';
     dot.style.display='none';
     txt.style.display='none';
-    // Show most recent patrol on map and zoom to it
+    // Show most recent patrol on map and zoom to it (only if user hasn't navigated away)
     if(patrols.length > 0){
       showPatrolOnMap(patrols[0], false);
       const pts = parsePatrolPoints(patrols[0].points);
       if(pts.length > 0){
         const last = pts[pts.length-1];
-        setTimeout(()=>{
-          if(patrolMap){
-            patrolMap.setView([last.lat, last.lng], 18, {animate:true});
-          }
-        }, 300);
+        setTimeout(()=>{ mapSetView(last.lat, last.lng, 18); }, 300);
       }
     }
   }
