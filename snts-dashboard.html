@@ -1443,7 +1443,6 @@ function initPatrolMap(){
     patrolMap = L.map('patrolMapEl', {
       center: [37.98, 23.73],
       zoom: 15,
-      maxZoom: 22,
       zoomControl: true,
       attributionControl: true
     });
@@ -1472,25 +1471,37 @@ function initPatrolMap(){
 
     const satWithLabels = L.layerGroup([satLayer, labelsLayer]);
 
-    // Προεπιλογή: δορυφορικός με ονόματα
-    satWithLabels.addTo(patrolMap);
+    // Προεπιλογή: OpenStreetMap (πιο αξιόπιστος)
+    streetLayer.addTo(patrolMap);
 
     // Κουμπί εναλλαγής χάρτη
     L.control.layers({
-      '🛰️ Δορυφόρος': satWithLabels,
-      '🗺️ Χάρτης': streetLayer
+      '🗺️ Χάρτης': streetLayer,
+      '🛰️ Δορυφόρος': satWithLabels
     }, null, {position:'topright', collapsed:false}).addTo(patrolMap);
 
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
 
-    // Track if user has manually moved/zoomed the map
-    // Use mousedown/touchstart directly on the map container — works regardless of Leaflet internals
-    const mapEl = document.getElementById('patrolMapEl');
-    if(mapEl){
-      mapEl.addEventListener('mousedown', function(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; });
-      mapEl.addEventListener('touchstart', function(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; }, {passive:true});
-      mapEl.addEventListener('wheel', function(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; }, {passive:true});
-    }
+    // ResizeObserver: ανανέωση Leaflet όταν αλλάζει μέγεθος div
+    try {
+      const ro = new ResizeObserver(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} });
+      const mel = document.getElementById('patrolMapEl');
+      if(mel) ro.observe(mel);
+    } catch(e){}
+
+    // Tracking χειροκίνητης κίνησης — μόνο drag και zoom από τον χρήστη
+    patrolMap.on('dragstart', function(){
+      userHasMovedMap = true;
+      const btn = document.getElementById('recenterMapBtn');
+      if(btn) btn.style.display = 'block';
+    });
+    patrolMap.on('zoomend', function(){
+      if(!patrolMap._sntsAutoZooming){
+        userHasMovedMap = true;
+        const btn = document.getElementById('recenterMapBtn');
+        if(btn) btn.style.display = 'block';
+      }
+    });
 
   } catch(e) {
     console.error('Map init error:', e);
@@ -1503,7 +1514,10 @@ let userHasMovedMap = false;
 // Helper: smart setView — skips if user has moved the map
 function mapSetView(lat, lng, zoom, opts){
   if(userHasMovedMap) return;
-  if(patrolMap) patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
+  if(!patrolMap) return;
+  patrolMap._sntsAutoZooming = true;
+  patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
+  setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
 }
 
 // Button: snap back to last known GPS position
