@@ -1479,17 +1479,30 @@ function initPatrolMap(){
 
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
 
-    // Track if user has manually moved/zoomed the map
-    // Attach user interaction listeners after a delay so the initial auto-zoom isn't caught
-    setTimeout(()=>{
-      const mapEl = document.getElementById('patrolMapEl');
-      if(mapEl){
-        function markUserMoved(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; }
-        mapEl.addEventListener('mousedown', markUserMoved);
-        mapEl.addEventListener('touchstart', markUserMoved, {passive:true});
-        mapEl.addEventListener('wheel', markUserMoved, {passive:true});
+    // ResizeObserver: whenever the map div changes size (browser zoom, panel resize),
+    // tell Leaflet to recalculate — prevents the blank map issue
+    try {
+      const ro = new ResizeObserver(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} });
+      const mapEl2 = document.getElementById('patrolMapEl');
+      if(mapEl2) ro.observe(mapEl2);
+    } catch(e){}
+
+    // Track if user has manually dragged/panned the map (NOT wheel — wheel can be browser zoom)
+    // We use Leaflet's own drag event which only fires on actual map pan
+    patrolMap.on('dragstart', function(){
+      userHasMovedMap = true;
+      const btn = document.getElementById('recenterMapBtn');
+      if(btn) btn.style.display = 'block';
+    });
+    // For zoom via scroll/buttons, use zoomend — only fires after zoom animation completes
+    patrolMap.on('zoomend', function(){
+      // Only mark as user-moved if we're not in the middle of a programmatic setView
+      if(!patrolMap._sntsAutoZooming){
+        userHasMovedMap = true;
+        const btn = document.getElementById('recenterMapBtn');
+        if(btn) btn.style.display = 'block';
       }
-    }, 3000);
+    });
 
   } catch(e) {
     console.error('Map init error:', e);
@@ -1502,7 +1515,10 @@ let userHasMovedMap = false;
 // Helper: smart setView — skips if user has moved the map
 function mapSetView(lat, lng, zoom, opts){
   if(userHasMovedMap) return;
-  if(patrolMap) patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
+  if(!patrolMap) return;
+  patrolMap._sntsAutoZooming = true;
+  patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
+  setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
 }
 
 // Button: snap back to last known GPS position
@@ -1685,7 +1701,9 @@ function focusScanOnMap(lat, lng, name){
   userHasMovedMap = false; // user explicitly asked to go here
   setTimeout(()=>{
     if(patrolMap){
+      patrolMap._sntsAutoZooming = true;
       patrolMap.setView([lat,lng], 18, {animate:true});
+      setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
       const icon = L.divIcon({className:'',html:'<div style="font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7))">📍</div>',iconSize:[32,32],iconAnchor:[16,30]});
       const m = L.marker([lat,lng],{icon}).addTo(patrolMap);
       m.bindPopup('<div style="font-family:sans-serif;font-size:13px"><b>📌 '+name+'</b><br>🗺️ '+lat.toFixed(6)+', '+lng.toFixed(6)+'</div>').openPopup();
@@ -1750,7 +1768,9 @@ function viewPatrolFromArchive(idx, isActive){
     const pts = parsePatrolPoints(p.points);
     if(pts.length && patrolMap){
       const last = pts[pts.length-1];
+      patrolMap._sntsAutoZooming = true;
       patrolMap.setView([last.lat, last.lng], 17, {animate:true});
+      setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
     }
     document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
   }, 400);
