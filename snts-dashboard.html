@@ -1480,13 +1480,10 @@ function initPatrolMap(){
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
 
     // Track if user has manually moved/zoomed the map
-    patrolMap.on('dragstart zoomstart', function(e){
-      // Ignore programmatic moves (fired via setView/flyTo)
-      if(e.originalEvent){
-        userHasMovedMap = true;
-        const btn = document.getElementById('recenterMapBtn');
-        if(btn) btn.style.display = 'block';
-      }
+    patrolMap.on('drag wheel touchstart', function(){
+      userHasMovedMap = true;
+      const btn = document.getElementById('recenterMapBtn');
+      if(btn) btn.style.display = 'block';
     });
 
   } catch(e) {
