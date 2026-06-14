@@ -1443,26 +1443,30 @@ function initPatrolMap(){
     patrolMap = L.map('patrolMapEl', {
       center: [37.98, 23.73],
       zoom: 15,
+      maxZoom: 22,
       zoomControl: true,
       attributionControl: true
     });
 
     // Χάρτης δρόμων (OpenStreetMap)
     const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
+      maxZoom: 22,
+      maxNativeZoom: 19,
       subdomains: ['a','b','c'],
       attribution: '© OpenStreetMap'
     });
 
     // Δορυφορικός χάρτης (Esri) - πολύ λεπτομερής
     const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
+      maxZoom: 22,
+      maxNativeZoom: 19,
       attribution: '© Esri'
     });
 
     // Ονόματα δρόμων πάνω στον δορυφορικό
     const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
+      maxZoom: 22,
+      maxNativeZoom: 19,
       subdomains: ['a','b','c','d']
     });
 
@@ -1479,30 +1483,14 @@ function initPatrolMap(){
 
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
 
-    // ResizeObserver: whenever the map div changes size (browser zoom, panel resize),
-    // tell Leaflet to recalculate — prevents the blank map issue
-    try {
-      const ro = new ResizeObserver(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} });
-      const mapEl2 = document.getElementById('patrolMapEl');
-      if(mapEl2) ro.observe(mapEl2);
-    } catch(e){}
-
-    // Track if user has manually dragged/panned the map (NOT wheel — wheel can be browser zoom)
-    // We use Leaflet's own drag event which only fires on actual map pan
-    patrolMap.on('dragstart', function(){
-      userHasMovedMap = true;
-      const btn = document.getElementById('recenterMapBtn');
-      if(btn) btn.style.display = 'block';
-    });
-    // For zoom via scroll/buttons, use zoomend — only fires after zoom animation completes
-    patrolMap.on('zoomend', function(){
-      // Only mark as user-moved if we're not in the middle of a programmatic setView
-      if(!patrolMap._sntsAutoZooming){
-        userHasMovedMap = true;
-        const btn = document.getElementById('recenterMapBtn');
-        if(btn) btn.style.display = 'block';
-      }
-    });
+    // Track if user has manually moved/zoomed the map
+    // Use mousedown/touchstart directly on the map container — works regardless of Leaflet internals
+    const mapEl = document.getElementById('patrolMapEl');
+    if(mapEl){
+      mapEl.addEventListener('mousedown', function(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; });
+      mapEl.addEventListener('touchstart', function(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; }, {passive:true});
+      mapEl.addEventListener('wheel', function(){ userHasMovedMap = true; const btn=document.getElementById('recenterMapBtn'); if(btn) btn.style.display='block'; }, {passive:true});
+    }
 
   } catch(e) {
     console.error('Map init error:', e);
@@ -1515,10 +1503,7 @@ let userHasMovedMap = false;
 // Helper: smart setView — skips if user has moved the map
 function mapSetView(lat, lng, zoom, opts){
   if(userHasMovedMap) return;
-  if(!patrolMap) return;
-  patrolMap._sntsAutoZooming = true;
-  patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
-  setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
+  if(patrolMap) patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
 }
 
 // Button: snap back to last known GPS position
@@ -1701,9 +1686,7 @@ function focusScanOnMap(lat, lng, name){
   userHasMovedMap = false; // user explicitly asked to go here
   setTimeout(()=>{
     if(patrolMap){
-      patrolMap._sntsAutoZooming = true;
       patrolMap.setView([lat,lng], 18, {animate:true});
-      setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
       const icon = L.divIcon({className:'',html:'<div style="font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7))">📍</div>',iconSize:[32,32],iconAnchor:[16,30]});
       const m = L.marker([lat,lng],{icon}).addTo(patrolMap);
       m.bindPopup('<div style="font-family:sans-serif;font-size:13px"><b>📌 '+name+'</b><br>🗺️ '+lat.toFixed(6)+', '+lng.toFixed(6)+'</div>').openPopup();
@@ -1768,9 +1751,7 @@ function viewPatrolFromArchive(idx, isActive){
     const pts = parsePatrolPoints(p.points);
     if(pts.length && patrolMap){
       const last = pts[pts.length-1];
-      patrolMap._sntsAutoZooming = true;
       patrolMap.setView([last.lat, last.lng], 17, {animate:true});
-      setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
     }
     document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
   }, 400);
