@@ -515,6 +515,9 @@ body{font-family:'Exo 2',sans-serif;background:linear-gradient(160deg,#04080f 0%
 const SB='https://eanvqkwtxbfkgpyivbml.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
 
+// ── ΕΚΔΟΣΗ & ΑΥΤΟΜΑΤΗ ΕΝΗΜΕΡΩΣΗ ──
+const APP_VERSION = '2026.06.15.2';  // άλλαξέ το σε κάθε ενημέρωση
+
 async function sb(method,table,query='',body=null){
   const h={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation'};
   try{const r=await fetch(`${SB}/rest/v1/${table}?${query}`,{method,headers:h,body:body?JSON.stringify(body):null});return r.json();}
@@ -673,12 +676,30 @@ function restorePatrol(){
   }catch(e){}
 }
 
+// Έλεγχος για νέα έκδοση - φορτώνει φρέσκο HTML αν άλλαξε
+async function checkForUpdate(){
+  try{
+    // Φέρε την τρέχουσα έκδοση από το GitHub (με anti-cache)
+    const res = await fetch('snts-guard.html?_check=' + Date.now(), {cache:'no-store'});
+    const html = await res.text();
+    const m = html.match(/APP_VERSION\s*=\s*'([^']+)'/);
+    if(m && m[1] && m[1] !== APP_VERSION){
+      // Υπάρχει νέα έκδοση!
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#1a6ef5,#0a4dc4);color:#fff;padding:14px;text-align:center;font-family:sans-serif;font-size:14px;font-weight:700;box-shadow:0 2px 10px rgba(0,0,0,0.4)';
+      banner.innerHTML = '🔄 Νέα έκδοση διαθέσιμη! <button onclick="location.reload(true)" style="margin-left:10px;background:#fff;color:#1a6ef5;border:none;padding:6px 14px;border-radius:8px;font-weight:700;cursor:pointer">Ενημέρωση τώρα</button>';
+      document.body.appendChild(banner);
+    }
+  }catch(e){ /* αγνόησε σφάλματα δικτύου */ }
+}
+
 window.onload = async () => {
   startGPS();
   updateCounters();
   restorePatrol();
   startBackgroundNFC();
   document.addEventListener('click', ()=>{ startBackgroundNFC(); }, {once:true});
+  checkForUpdate();
   await loadSOSContacts();
   if(thisLoc) startHeartbeat();
 
@@ -1148,6 +1169,39 @@ async function startBackgroundNFC(){
 
 // Serial του tag ΠΕΡΙΠΟΛΙΑΣ - μόνο αυτό ξεκινά/σταματά περιπολία
 const PATROL_TAG_SERIALS = ['04:48:7e:72:1c:12:90','04:48:7E:72:1C:12:90'];
+
+// Γέφυρα για NFC από το Android APK (native)
+function handleNativeNfc(text, serial){
+  const now = Date.now();
+  const ser = (serial||'').toLowerCase();
+  // Dedup ίδιου tag μέσα σε 4 δευτ.
+  if(ser && ser === lastNfcSerial && (now - lastNfcTime) < 4000) return;
+  lastNfcSerial = ser;
+  lastNfcTime = now;
+  if(navigator.vibrate) navigator.vibrate(100);
+
+  let tagName = (text||'').trim();
+  if(!tagName){
+    tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
+  }
+
+  // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial
+  const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===ser);
+  if(isPatrolSerial){
+    const wasActive = !!activePatrol;
+    if(!window._patrolBusy){
+      window._patrolBusy = true;
+      const done = ()=>{ window._patrolBusy = false; };
+      if(activePatrol){ endPatrol().finally(done); }
+      else { startPatrol().finally(done); }
+    }
+    const patrolLabel = wasActive ? 'ΛΗΞΗ ΠΕΡΙΠΟΛΙΑΣ' : 'ΕΝΑΡΞΗ ΠΕΡΙΠΟΛΙΑΣ';
+    logScan(patrolLabel, serial||'NFC-'+Date.now(), true);
+    return;
+  }
+
+  logScan(tagName, serial||'NFC-'+Date.now());
+}
 
 function handleNfcRead(ev){
   // Αγνόησε το ίδιο tag αν σκαναριστεί ξανά μέσα σε 4 δευτ.
