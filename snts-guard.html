@@ -1337,22 +1337,28 @@ function startGPS(){
   };
 
   const onError = e => {
+    // Αν έχουμε ήδη στίγμα, μην το χαλάς με μήνυμα timeout
+    if(gps) return;
     let msg = 'GPS: ';
     if(e.code===1) msg += '⚠️ Απαιτείται άδεια τοποθεσίας';
     else if(e.code===2) msg += '⚠️ Μη διαθέσιμο';
-    else msg += '⚠️ Timeout';
+    else msg += '⏳ Αναζήτηση σήματος...';
     document.getElementById('gpsDisp').textContent=msg;
     try{document.getElementById('gpsDisp2').textContent=msg;}catch(e){}
-    // Retry after 5 seconds
-    setTimeout(startGPS, 5000);
+    // Retry after 8 seconds μόνο αν δεν έχουμε στίγμα
+    setTimeout(()=>{ if(!gps) startGPS(); }, 8000);
   };
 
-  // First get a quick fix, then watch
+  // Δοκίμασε αμέσως με cached/χαμηλή ακρίβεια (πιάνει γρήγορα)
   navigator.geolocation.getCurrentPosition(onSuccess, onError,
-    {enableHighAccuracy:true, timeout:10000, maximumAge:0});
+    {enableHighAccuracy:false, timeout:27000, maximumAge:120000});
 
-  navigator.geolocation.watchPosition(onSuccess, onError,
-    {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
+  // Συνεχής παρακολούθηση με υψηλή ακρίβεια (χωρίς timeout - δουλεύει στο παρασκήνιο)
+  try{
+    navigator.geolocation.watchPosition(onSuccess,
+      ()=>{}, // αγνόησε σφάλματα του watch - το getCurrentPosition χειρίζεται τα errors
+      {enableHighAccuracy:true, maximumAge:10000});
+  }catch(e){}
 }
 
 // ── RENDER ──
