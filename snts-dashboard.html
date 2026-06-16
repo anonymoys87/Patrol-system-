@@ -1629,35 +1629,27 @@ async function clearHistory(type){
   const labels = {patrol_scans:'τα σκαν', shifts:'τις βάρδιες', patrols:'τις περιπολίες', incidents:'τα συμβάντα', all:'ΟΛΟ το ιστορικό', everything:'ΤΑ ΠΑΝΤΑ (φύλακες, χώροι, βάρδιες, σκαν)'};
   if(!confirm('Διαγραφή '+labels[type]+';\n\nΑυτό ΔΕΝ αναιρείται!')) return;
   if(type==='everything' && !confirm('⚠️ ΠΡΟΣΟΧΗ!\n\nΘα σβηστούν ΟΛΟΙ οι φύλακες, χώροι, βάρδιες και δεδομένα.\n\nΣίγουρα;')) return;
+
+  // Ζήτα τον κωδικό διαγραφής
+  const code = prompt('🔒 Εισάγετε τον κωδικό διαγραφής:');
+  if(!code) return;
+
   try{
-    if(type==='all'){
-      await Promise.all([
-        sb('DELETE','patrol_scans','id=not.is.null'),
-        sb('DELETE','shifts','id=not.is.null'),
-        sb('DELETE','patrols','id=not.is.null'),
-        sb('DELETE','incidents','id=not.is.null')
-      ]);
-    } else if(type==='everything'){
-      await Promise.all([
-        sb('DELETE','patrol_scans','id=not.is.null'),
-        sb('DELETE','shifts','id=not.is.null'),
-        sb('DELETE','patrols','id=not.is.null'),
-        sb('DELETE','incidents','id=not.is.null'),
-        sb('DELETE','sos_alerts','id=not.is.null'),
-        sb('DELETE','device_heartbeat','id=not.is.null')
-      ]);
-      // Σβήσε και φύλακες + χώρους
-      await sb('DELETE','guards','id=not.is.null');
-      await sb('DELETE','locations','id=not.is.null');
-    } else {
-      const res = await sb('DELETE', type, 'id=not.is.null');
-      // Έλεγξε αν μπλοκαρίστηκε από RLS (προστασία)
-      if(res && res._deletedCount === 0){
-        toast('🔒 Η διαγραφή είναι κλειδωμένη (προστασία)','err');
-        return;
-      }
+    const r = await fetch(`${SB}/rest/v1/rpc/admin_clear`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({ del_code: code, target: type })
+    });
+    const result = await r.json();
+    if(result === 'WRONG_CODE'){
+      toast('🔒 Λάθος κωδικός διαγραφής','err');
+      return;
     }
-    toast('Διαγράφηκε','ok');
+    if(result !== 'OK'){
+      toast('Σφάλμα διαγραφής','err');
+      return;
+    }
+    toast('✓ Διαγράφηκε','ok');
     await load();
     renderIncidents(); renderShiftHistory(); loadPatrolHistoryList();
   }catch(e){ toast('Σφάλμα διαγραφής','err'); }
