@@ -1439,7 +1439,11 @@ let lastPointCount = 0;
 async function updateLiveMarker(){
   if(currentTab!=='overview' || !patrolMap) return;
   const data = await get('patrols','status=eq.active&order=start_time.desc&limit=1');
-  if(!Array.isArray(data)||!data.length) return;
+  if(!Array.isArray(data)||!data.length){
+    // Καμία ενεργή περιπολία - καθάρισε τον live marker
+    lastPointCount = 0;
+    return;
+  }
   const active = data[0];
   const pts = parsePatrolPoints(active.points);
   if(!pts.length) return;

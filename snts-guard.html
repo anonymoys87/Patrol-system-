@@ -1025,6 +1025,11 @@ async function endShift(){
   const m = String(Math.floor((d%3600)/60)).padStart(2,'0');
   if(!confirm(`Λήξη βάρδιας;\n👤 ${activeShift.guard}\n📍 ${activeShift.loc}\n⌛ ${h}:${m}\n📡 ${activeShift.scans} σκαν`))return;
 
+  // Κλείσε πρώτα τυχόν ενεργή περιπολία
+  if(activePatrol){
+    await endPatrol();
+  }
+
   if(activeShift.dbId){
     await patch('shifts',`id=eq.${activeShift.dbId}`,{
       status:'done',
