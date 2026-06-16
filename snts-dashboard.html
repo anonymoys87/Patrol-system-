@@ -1640,13 +1640,14 @@ async function clearHistory(type){
       headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},
       body: JSON.stringify({ del_code: code, target: type })
     });
-    const result = await r.json();
+    const txt = await r.text();
+    const result = txt.replace(/[\"\s]/g,''); // καθάρισε εισαγωγικά/κενά
     if(result === 'WRONG_CODE'){
       toast('🔒 Λάθος κωδικός διαγραφής','err');
       return;
     }
     if(result !== 'OK'){
-      toast('Σφάλμα διαγραφής','err');
+      toast('Σφάλμα: '+result,'err');
       return;
     }
     toast('✓ Διαγράφηκε','ok');
