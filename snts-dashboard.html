@@ -287,9 +287,6 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
     <div id="patrolMapOverlay" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:rgba(6,14,31,0.9);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.3);border-radius:12px;padding:12px;max-width:280px">
       <div id="mapLegend" style="font-size:12px;color:var(--tx)"></div>
     </div>
-    <button id="recenterMapBtn" onclick="recenterMap()" style="display:none;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(6,14,31,0.92);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.5);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,0.5)">
-      📍 Επιστροφή στο στίγμα
-    </button>
   </div>
   <div class="div"></div>
 
@@ -340,7 +337,8 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
     <button onclick="clearHistory('shifts')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Βάρδιες</button>
     <button onclick="clearHistory('patrols')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Περιπολίες</button>
     <button onclick="clearHistory('incidents')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Συμβάντα</button>
-    <button onclick="clearHistory('all')" style="background:rgba(232,51,74,0.15);border:1px solid var(--r);border-radius:8px;padding:8px 12px;color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">ΟΛΑ</button>
+    <button onclick="clearHistory('all')" style="background:rgba(232,51,74,0.15);border:1px solid var(--r);border-radius:8px;padding:8px 12px;color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">ΟΛΟ ΤΟ ΙΣΤΟΡΙΚΟ</button>
+    <button onclick="clearHistory('everything')" style="background:var(--r);border:1px solid var(--r);border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">🔄 ΜΗΔΕΝΙΣΜΟΣ ΟΛΩΝ</button>
   </div>
 </div>
   <!-- Αναφορές Συμβάντων -->
@@ -732,17 +730,9 @@ function renderLocDetail(){
   if(!selLoc){el.innerHTML='';return;}
 
   const activeShifts=shifts.filter(s=>s.status==='active'&&s.location_name===selLoc);
-  const locGuards=guards.filter(g=>g.location_name===selLoc);
-
-  // Check heartbeat for this location
   const hb = heartbeats.find(h=>h.location_name===selLoc);
   const isOnline = hb && (Date.now()-new Date(hb.last_seen))<5*60*1000;
-  const lastSeen = hb ? new Date(hb.last_seen).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}) : '—';
-
-  // Check SOS for this location
   const locSOS=sosAlerts.filter(s=>s.location_name===selLoc&&!s.resolved);
-
-  let html='';
 
   // Mark SOS as seen
   if(locSOS.length){
@@ -754,86 +744,47 @@ function renderLocDetail(){
     });
   }
 
-  // SOS ALERT BANNER
+  let html='';
+
+  // SOS (συμπαγές)
   if(locSOS.length){
-    html+=`<div style="background:rgba(255,23,68,0.12);border:2px solid var(--r);border-radius:14px;padding:16px;margin-bottom:12px;animation:sosBtnFlash 1s ease-in-out infinite">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span style="font-size:28px">🆘</span>
-        <div>
-          <div style="font-size:16px;font-weight:900;color:var(--r);letter-spacing:2px">ΕΝΕΡΓΟ SOS!</div>
-          <div style="font-size:12px;color:var(--tx);margin-top:2px">📍 ${esc(selLoc)}</div>
-        </div>
-      </div>
-      ${locSOS.map(s=>`
-        <div style="background:rgba(255,23,68,0.15);border-radius:10px;padding:10px;margin-bottom:6px">
-          <div style="font-size:14px;font-weight:700;color:var(--tx)">👮 ${esc(s.guard_name||'Άγνωστος')}</div>
-          <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mu);margin-top:4px">
-            🕐 ${s.created_at?new Date(s.created_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}):'—'}
-            ${s.lat?` · <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:var(--ac);text-decoration:none">🗺️ Δες στο χάρτη</a>`:''}
-          </div>
-          ${(()=>{const g=guards.find(x=>x.full_name===s.guard_name);return g?.phone?`<a href="tel:${g.phone}" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:8px 14px;border-radius:20px;background:var(--r);color:#fff;font-size:13px;font-weight:700;text-decoration:none">📞 ΚΑΛΕΣΕ ${esc(s.guard_name)}</a>`:'';})()}
-        </div>`).join('')}
-      <button onclick="resolveSOSForLoc('${esc(selLoc)}')" style="width:100%;padding:10px;border-radius:10px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-family:'Exo 2',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;letter-spacing:1px">✓ ΕΠΙΛΥΘΗΚΕ — ΚΛΕΙΣΙΜΟ SOS</button>
+    html+=`<div style="background:rgba(255,23,68,0.12);border:2px solid var(--r);border-radius:12px;padding:12px;margin-bottom:10px;animation:sosBtnFlash 1s ease-in-out infinite">
+      <div style="font-size:14px;font-weight:900;color:var(--r);letter-spacing:1px;margin-bottom:6px">🆘 ΕΝΕΡΓΟ SOS — ${esc(selLoc)}</div>
+      ${locSOS.map(s=>{const g=guards.find(x=>x.full_name===s.guard_name);return `<div style="font-size:13px;color:var(--tx);margin-bottom:4px">👮 ${esc(s.guard_name||'—')} ${s.lat?`· <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:var(--ac)">🗺️</a>`:''} ${g&&g.phone?`· <a href="tel:${g.phone}" style="color:var(--r);font-weight:700">📞</a>`:''}</div>`;}).join('')}
+      <button onclick="resolveSOSForLoc('${esc(selLoc)}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer;margin-top:4px">✓ ΕΠΙΛΥΘΗΚΕ</button>
     </div>`;
   }
 
-  html+=`<div class="card green" style="margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:900;color:var(--g);letter-spacing:2px">📍 ${esc(selLoc)}</div>
-      <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;${isOnline?'background:rgba(0,201,122,0.15);border:1px solid var(--g)':'background:rgba(232,51,74,0.1);border:1px solid rgba(232,51,74,0.4)'}">
-        <div style="width:7px;height:7px;border-radius:50%;background:${isOnline?'var(--g)':'var(--r)'};${isOnline?'animation:blink 1.5s infinite':''}"></div>
-        <span style="font-size:10px;font-weight:700;font-family:'Share Tech Mono',monospace;color:${isOnline?'var(--g)':'var(--r)'}">${isOnline?'ΣΥΝΔΕΔΕΜΕΝΟ':'ΕΚΤΟΣ ΣΥΝΔΕΣΗΣ'}</span>
-        ${!isOnline&&hb?`<span style="font-size:9px;color:var(--mu)">τελ: ${lastSeen}</span>`:''}
-      </div>
+  // Συμπαγής γραμμή χώρου
+  let statusText, statusColor, guardLine='';
+  if(activeShifts.length){
+    const s=activeShifts[0];
+    const guard=guards.find(g=>g.full_name===s.guard_name)||{};
+    const start=new Date(s.start_time);
+    const d=Math.floor((Date.now()-start)/1000);
+    const h=String(Math.floor(d/3600)).padStart(2,'0');
+    const m=String(Math.floor((d%3600)/60)).padStart(2,'0');
+    statusText='🟢 ΣΕ ΒΑΡΔΙΑ'; statusColor='var(--g)';
+    guardLine=`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:10px;background:var(--s2);border-radius:10px">
+      <div><div style="font-weight:700;font-size:14px">👮 ${esc(s.guard_name)}</div>
+      <div style="font-size:11px;color:var(--mu);font-family:'Share Tech Mono',monospace">από ${start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})} · ${h}:${m} ⏱</div></div>
+      ${guard.phone?`<a href="tel:${guard.phone}" style="padding:8px 12px;border-radius:20px;background:var(--g);color:#fff;font-size:12px;font-weight:700;text-decoration:none">📞</a>`:''}
     </div>`;
-
-  if(!activeShifts.length){
-    html+=`<div style="font-size:13px;color:var(--mu)">⚪ Δεν υπάρχει ενεργή βάρδια αυτή τη στιγμή</div>`;
-    if(locGuards.length){
-      html+=`<div style="margin-top:10px;font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">ΦΥΛΑΚΕΣ ΤΟΠΟΘΕΣΙΑΣ</div>`;
-      html+=locGuards.map(g=>`
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:8px;margin-bottom:5px">
-          <div style="font-size:13px;font-weight:600">👮 ${esc(g.full_name)}</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="badge off">ΕΚΤΟΣ</span>
-            ${g.phone?`<a href="tel:${g.phone}" style="font-size:11px;color:var(--g);text-decoration:none">📞</a>`:''}
-          </div>
-        </div>`).join('');
-    }
-  }else{
-    activeShifts.forEach(s=>{
-      const guard=guards.find(g=>g.full_name===s.guard_name)||{};
-      const start=new Date(s.start_time);
-      const d=Math.floor((Date.now()-start)/1000);
-      const h=String(Math.floor(d/3600)).padStart(2,'0');
-      const m=String(Math.floor((d%3600)/60)).padStart(2,'0');
-      html+=`
-        <div style="background:var(--s2);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid rgba(0,201,122,0.2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--ac),#0d4db5);display:flex;align-items:center;justify-content:center;font-size:18px">👮</div>
-              <div><div style="font-weight:700;font-size:15px">${esc(s.guard_name)}</div>
-              <div style="font-size:10px;color:var(--ac);text-transform:uppercase;letter-spacing:1px">${esc(guard.role||'Φύλακας')}</div></div>
-            </div>
-            <span class="badge on">ΣΕ ΒΑΡΔΙΑ</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div style="background:var(--s);border-radius:8px;padding:8px">
-              <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Ανέλαβε</div>
-              <div style="font-family:'Share Tech Mono',monospace;font-size:13px">${start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
-              <div style="font-size:10px;color:var(--mu)">${start.toLocaleDateString('el-GR')}</div>
-            </div>
-            <div style="background:var(--s);border-radius:8px;padding:8px">
-              <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Διάρκεια</div>
-              <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--y)">${h}:${m}</div>
-              <div style="font-size:10px;color:var(--mu)">↩ από: ${esc(s.handover_from||'—')}</div>
-            </div>
-          </div>
-          ${guard.phone?`<a class="btn-call" href="tel:${guard.phone}" style="margin-top:10px;text-decoration:none">📞 Κλήση ${esc(s.guard_name)}</a>`:''}
-        </div>`;
-    });
+  } else {
+    statusText='⚪ Καμία ενεργή βάρδια'; statusColor='var(--mu)';
   }
-  html+='</div>';
+
+  html+=`<div class="card" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;font-weight:900;color:${statusColor};letter-spacing:1px">📍 ${esc(selLoc)}</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:'Share Tech Mono',monospace;color:${isOnline?'var(--g)':'var(--mu)'}">
+        <div style="width:6px;height:6px;border-radius:50%;background:${isOnline?'var(--g)':'var(--mu)'}"></div>${isOnline?'ONLINE':'OFFLINE'}
+      </div>
+    </div>
+    <div style="font-size:12px;color:${statusColor};margin-top:4px">${statusText}</div>
+    ${guardLine}
+  </div>`;
+
   el.innerHTML=html;
 }
 
@@ -1449,89 +1400,38 @@ function initPatrolMap(){
 
     // Χάρτης δρόμων (OpenStreetMap)
     const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 22,
-      maxNativeZoom: 19,
+      maxZoom: 19,
       subdomains: ['a','b','c'],
       attribution: '© OpenStreetMap'
     });
 
     // Δορυφορικός χάρτης (Esri) - πολύ λεπτομερής
     const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 22,
-      maxNativeZoom: 19,
+      maxZoom: 19,
       attribution: '© Esri'
     });
 
     // Ονόματα δρόμων πάνω στον δορυφορικό
     const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-      maxZoom: 22,
-      maxNativeZoom: 19,
+      maxZoom: 19,
       subdomains: ['a','b','c','d']
     });
 
     const satWithLabels = L.layerGroup([satLayer, labelsLayer]);
 
-    // Προεπιλογή: OpenStreetMap (πιο αξιόπιστος)
-    streetLayer.addTo(patrolMap);
+    // Προεπιλογή: δορυφορικός με ονόματα
+    satWithLabels.addTo(patrolMap);
 
     // Κουμπί εναλλαγής χάρτη
     L.control.layers({
-      '🗺️ Χάρτης': streetLayer,
-      '🛰️ Δορυφόρος': satWithLabels
+      '🛰️ Δορυφόρος': satWithLabels,
+      '🗺️ Χάρτης': streetLayer
     }, null, {position:'topright', collapsed:false}).addTo(patrolMap);
 
     setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
-
-    // ResizeObserver: ανανέωση Leaflet όταν αλλάζει μέγεθος div
-    try {
-      const ro = new ResizeObserver(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} });
-      const mel = document.getElementById('patrolMapEl');
-      if(mel) ro.observe(mel);
-    } catch(e){}
-
-    // Tracking χειροκίνητης κίνησης — μόνο drag και zoom από τον χρήστη
-    patrolMap.on('dragstart', function(){
-      userHasMovedMap = true;
-      const btn = document.getElementById('recenterMapBtn');
-      if(btn) btn.style.display = 'block';
-    });
-    patrolMap.on('zoomend', function(){
-      if(!patrolMap._sntsAutoZooming){
-        userHasMovedMap = true;
-        const btn = document.getElementById('recenterMapBtn');
-        if(btn) btn.style.display = 'block';
-      }
-    });
-
   } catch(e) {
     console.error('Map init error:', e);
   }
-}
-
-// Flag: true when user has manually panned/zoomed
-let userHasMovedMap = false;
-
-// Helper: smart setView — skips if user has moved the map
-function mapSetView(lat, lng, zoom, opts){
-  if(userHasMovedMap) return;
-  if(!patrolMap) return;
-  patrolMap._sntsAutoZooming = true;
-  patrolMap.setView([lat, lng], zoom||18, opts||{animate:true});
-  setTimeout(()=>{ if(patrolMap) patrolMap._sntsAutoZooming = false; }, 1500);
-}
-
-// Button: snap back to last known GPS position
-function recenterMap(){
-  userHasMovedMap = false;
-  const btn = document.getElementById('recenterMapBtn');
-  if(btn) btn.style.display = 'none';
-  // Find last GPS point from active or most recent patrol
-  const active = patrols.find(p=>p.status==='active') || patrols[0];
-  if(!active) return;
-  const pts = parsePatrolPoints(active.points);
-  if(!pts.length) return;
-  const last = pts[pts.length-1];
-  if(patrolMap) patrolMap.setView([last.lat, last.lng], 18, {animate:true});
 }
 
 // Update live marker on map every 5 sec
@@ -1553,8 +1453,8 @@ async function updateLiveMarker(){
   // Update live marker position
   if(patrolMarkerEnd){
     patrolMarkerEnd.setLatLng([last.lat, last.lng]);
-    // Only pan if user hasn't manually navigated away
-    if(!userHasMovedMap && !patrolMap.getBounds().contains([last.lat, last.lng])){
+    // Only pan if marker is outside visible area
+    if(!patrolMap.getBounds().contains([last.lat, last.lng])){
       patrolMap.panTo([last.lat, last.lng], {animate:true, duration:0.8});
     }
   }
@@ -1697,7 +1597,6 @@ async function focusGuardOnMap(guardName){
 function focusScanOnMap(lat, lng, name){
   document.getElementById('quickView').style.display='none';
   if(!patrolMap){ initPatrolMap(); }
-  userHasMovedMap = false; // user explicitly asked to go here
   setTimeout(()=>{
     if(patrolMap){
       patrolMap.setView([lat,lng], 18, {animate:true});
@@ -1711,8 +1610,9 @@ function focusScanOnMap(lat, lng, name){
 }
 
 async function clearHistory(type){
-  const labels = {patrol_scans:'τα σκαν', shifts:'τις βάρδιες', patrols:'τις περιπολίες', incidents:'τα συμβάντα', all:'ΟΛΟ το ιστορικό'};
+  const labels = {patrol_scans:'τα σκαν', shifts:'τις βάρδιες', patrols:'τις περιπολίες', incidents:'τα συμβάντα', all:'ΟΛΟ το ιστορικό', everything:'ΤΑ ΠΑΝΤΑ (φύλακες, χώροι, βάρδιες, σκαν)'};
   if(!confirm('Διαγραφή '+labels[type]+';\n\nΑυτό ΔΕΝ αναιρείται!')) return;
+  if(type==='everything' && !confirm('⚠️ ΠΡΟΣΟΧΗ!\n\nΘα σβηστούν ΟΛΟΙ οι φύλακες, χώροι, βάρδιες και δεδομένα.\n\nΣίγουρα;')) return;
   try{
     if(type==='all'){
       await Promise.all([
@@ -1721,6 +1621,18 @@ async function clearHistory(type){
         sb('DELETE','patrols','id=not.is.null'),
         sb('DELETE','incidents','id=not.is.null')
       ]);
+    } else if(type==='everything'){
+      await Promise.all([
+        sb('DELETE','patrol_scans','id=not.is.null'),
+        sb('DELETE','shifts','id=not.is.null'),
+        sb('DELETE','patrols','id=not.is.null'),
+        sb('DELETE','incidents','id=not.is.null'),
+        sb('DELETE','sos_alerts','id=not.is.null'),
+        sb('DELETE','device_heartbeat','id=not.is.null')
+      ]);
+      // Σβήσε και φύλακες + χώρους
+      await sb('DELETE','guards','id=not.is.null');
+      await sb('DELETE','locations','id=not.is.null');
     } else {
       await sb('DELETE', type, 'id=not.is.null');
     }
@@ -1759,7 +1671,6 @@ function viewPatrolFromArchive(idx, isActive){
   const p = patrols[idx];
   if(!p) return;
   tab('overview');
-  userHasMovedMap = false; // user explicitly asked to go here
   setTimeout(()=>{
     showPatrolOnMap(p, isActive);
     const pts = parsePatrolPoints(p.points);
@@ -1806,22 +1717,30 @@ async function loadPatrols(){
     document.getElementById('activePatrolPoints').textContent =
       `${pts.length} σημεία GPS καταγεγραμμένα`;
     showPatrolOnMap(active, true);
-    // Zoom to last GPS point if available (only if user hasn't navigated away)
+    // Zoom to last GPS point if available
     if(pts.length > 0){
       const last = pts[pts.length-1];
-      setTimeout(()=>{ mapSetView(last.lat, last.lng, 18); }, 300);
+      setTimeout(()=>{
+        if(patrolMap){
+          patrolMap.setView([last.lat, last.lng], 18, {animate:true});
+        }
+      }, 300);
     }
   } else {
     banner.style.display='none';
     dot.style.display='none';
     txt.style.display='none';
-    // Show most recent patrol on map and zoom to it (only if user hasn't navigated away)
+    // Show most recent patrol on map and zoom to it
     if(patrols.length > 0){
       showPatrolOnMap(patrols[0], false);
       const pts = parsePatrolPoints(patrols[0].points);
       if(pts.length > 0){
         const last = pts[pts.length-1];
-        setTimeout(()=>{ mapSetView(last.lat, last.lng, 18); }, 300);
+        setTimeout(()=>{
+          if(patrolMap){
+            patrolMap.setView([last.lat, last.lng], 18, {animate:true});
+          }
+        }, 300);
       }
     }
   }
