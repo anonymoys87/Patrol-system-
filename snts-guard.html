@@ -1172,7 +1172,17 @@ async function startBackgroundNFC(){
   }
 }
 
-// Serial του tag ΠΕΡΙΠΟΛΙΑΣ - μόνο αυτό ξεκινά/σταματά περιπολία
+// NFC Tag registry: serial → {action, name}
+// action: 'toggle' = εναρξη/ληξη περιπολιας, 'scan' = καταγραφη σημειου
+const NFC_TAGS = {
+  '04:48:7e:72:1c:12:90': { action:'toggle', name:'ΕΝΑΡΞΗ/ΛΗΞΗ ΠΕΡΙΠΟΛΙΑΣ' },
+  '04:1e:93:72:1c:12:90': { action:'scan',   name:'ΡΑΜΠΕΣ Α\'ΥΛΩΝ' },
+  '04:47:8f:72:1c:12:90': { action:'scan',   name:'ΕΙΣΟΔΟΣ Β ΚΤΙΡΙΟΥ' },
+  '04:3e:94:72:1c:12:90': { action:'scan',   name:'ΣΠΙΤΙ ΦΥΛΑΚΑ' },
+  '04:08:8f:72:1c:12:90': { action:'scan',   name:'ΔΕΞΑΜΕΝΗ ΒΙΟΛΟΓΙΚΟΣ' },
+  '04:6b:7e:72:1c:12:90': { action:'scan',   name:'ΓΩΝΙΑ ΑΝΑΤΟΛΙΚΑ' },
+  '04:eb:90:72:1c:12:90': { action:'scan',   name:'ΡΑΜΠΕΣ ΨΥΓΕΙΩΝ' },
+};
 const PATROL_TAG_SERIALS = ['04:48:7e:72:1c:12:90','04:48:7E:72:1C:12:90'];
 
 // Γέφυρα για NFC από το Android APK (native)
@@ -1185,13 +1195,11 @@ function handleNativeNfc(text, serial){
   lastNfcTime = now;
   if(navigator.vibrate) navigator.vibrate(100);
 
-  let tagName = (text||'').trim();
-  if(!tagName){
-    tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
-  }
+  // Ψάξε στον πίνακα NFC_TAGS
+  const tagInfo = NFC_TAGS[ser];
+  const tagName = tagInfo ? tagInfo.name : ((text||'').trim() || 'Σημείο-' + (serial||Date.now()).toString().slice(-6));
+  const isPatrolSerial = tagInfo ? tagInfo.action === 'toggle' : PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===ser);
 
-  // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial
-  const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===ser);
   if(isPatrolSerial){
     const wasActive = !!activePatrol;
     if(!window._patrolBusy){
@@ -1243,15 +1251,18 @@ function handleNfcRead(ev){
     }
   }catch(e){}
 
-  // Όνομα από το πρώτο record
-  let tagName = (parts[0] || '').trim();
-  if(!tagName){
-    tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
+  // Ψάξε στον πίνακα NFC_TAGS βάσει serial
+  const ser = serial.toLowerCase();
+  const tagInfo = NFC_TAGS[ser];
+  let tagName;
+  if(tagInfo){
+    tagName = tagInfo.name;
+  } else {
+    tagName = (parts[0] || '').trim() || 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
 
-
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
-  const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
+  const isPatrolSerial = tagInfo ? tagInfo.action === 'toggle' : PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
   if(isPatrolSerial){
     const wasActive = !!activePatrol;
     if(window._patrolBusy){ toast('Περίμενε...','err'); }
