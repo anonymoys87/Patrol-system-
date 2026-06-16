@@ -533,7 +533,12 @@ async function sb(method,table,query='',body=null){
   try{
     const r=await fetch(`${SB}/rest/v1/${table}?${query}`,opts);
     const j=await r.json();
-    return Array.isArray(j)?j:(j&&j.length!==undefined?j:[j]);
+    const arr = Array.isArray(j)?j:(j&&j.length!==undefined?j:[j]);
+    // Για DELETE: αν επιστρέψει κενό = μπλοκαρίστηκε από RLS
+    if(method==='DELETE'){
+      arr._deletedCount = Array.isArray(j) ? j.length : 0;
+    }
+    return arr;
   }catch(e){return[];}
 }
 const get=(t,q)=>sb('GET',t,q);
@@ -1645,7 +1650,12 @@ async function clearHistory(type){
       await sb('DELETE','guards','id=not.is.null');
       await sb('DELETE','locations','id=not.is.null');
     } else {
-      await sb('DELETE', type, 'id=not.is.null');
+      const res = await sb('DELETE', type, 'id=not.is.null');
+      // Έλεγξε αν μπλοκαρίστηκε από RLS (προστασία)
+      if(res && res._deletedCount === 0){
+        toast('🔒 Η διαγραφή είναι κλειδωμένη (προστασία)','err');
+        return;
+      }
     }
     toast('Διαγράφηκε','ok');
     await load();
