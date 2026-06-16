@@ -516,7 +516,80 @@ const SB='https://eanvqkwtxbfkgpyivbml.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
 
 // ── ΕΚΔΟΣΗ & ΑΥΤΟΜΑΤΗ ΕΝΗΜΕΡΩΣΗ ──
-const APP_VERSION = '2026.06.15.2';  // άλλαξέ το σε κάθε ενημέρωση
+const APP_VERSION = '2026.06.15.5';  // άλλαξέ το σε κάθε ενημέρωση
+
+
+// ── ΑΝΑΓΝΩΡΙΣΗ ΣΥΣΚΕΥΗΣ ──
+function getDeviceId(){
+  let id = localStorage.getItem('snts_device_id');
+  if(!id){
+    id = 'DEV-' + Math.random().toString(36).slice(2,10).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+    localStorage.setItem('snts_device_id', id);
+    localStorage.setItem('snts_device_installed', new Date().toISOString());
+  }
+  return id;
+}
+
+function getDeviceInfo(){
+  const ua = navigator.userAgent;
+  let model = 'Άγνωστη συσκευή';
+  // Προσπάθησε να βρεις το μοντέλο από το user agent
+  const m = ua.match(/\(Linux.*?;\s*([^;)]+)\s*(?:Build|;)/);
+  if(m && m[1]) model = m[1].trim();
+  else if(/iPhone/.test(ua)) model = 'iPhone';
+  else if(/iPad/.test(ua)) model = 'iPad';
+  return model;
+}
+
+async function registerDevice(){
+  const id = getDeviceId();
+  const installed = localStorage.getItem('snts_device_installed') || new Date().toISOString();
+  const model = getDeviceInfo();
+  const guardName = activeShift?.guard || (selectedGuard?selectedGuard.name:'') || '';
+  try{
+    // Update πρώτα
+    const upd = await fetch(`${SB}/rest/v1/devices?device_id=eq.${encodeURIComponent(id)}`,{
+      method:'PATCH',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify({last_seen:new Date().toISOString(), model, location_name:thisLoc||'', guard_name:guardName, app_version:APP_VERSION})
+    });
+    const updData = await upd.json();
+    if(!Array.isArray(updData)||!updData.length){
+      // Insert νέα συσκευή (μη εγκεκριμένη)
+      await fetch(`${SB}/rest/v1/devices`,{
+        method:'POST',
+        headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({device_id:id, model, installed_at:installed, last_seen:new Date().toISOString(), location_name:thisLoc||'', guard_name:guardName, app_version:APP_VERSION, approved:false})
+      });
+    }
+    // Έλεγξε αν είναι εγκεκριμένη
+    await checkDeviceApproval(id);
+  }catch(e){ console.error('Device register error:', e); }
+}
+
+async function checkDeviceApproval(id){
+  try{
+    const r = await get('devices', `device_id=eq.${encodeURIComponent(id)}&select=approved`);
+    const approved = Array.isArray(r) && r[0] && r[0].approved === true;
+    const blocker = document.getElementById('approvalBlocker');
+    if(!approved){
+      // Δείξε οθόνη αναμονής έγκρισης
+      if(!blocker){
+        const div = document.createElement('div');
+        div.id = 'approvalBlocker';
+        div.style.cssText = 'position:fixed;inset:0;z-index:999999;background:linear-gradient(160deg,#04080f,#0a0f20);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;font-family:sans-serif';
+        div.innerHTML = '<div style="font-size:60px;margin-bottom:20px">🔒</div>'
+          + '<div style="font-size:20px;font-weight:900;color:#1a6ef5;margin-bottom:12px">ΑΝΑΜΟΝΗ ΕΓΚΡΙΣΗΣ</div>'
+          + '<div style="font-size:14px;color:#cfe;max-width:300px;line-height:1.5">Η συσκευή σου περιμένει έγκριση από τον διαχειριστή.<br><br>Επικοινώνησε με το γραφείο για να ενεργοποιηθεί η εφαρμογή.</div>'
+          + '<div style="font-size:11px;color:#546e7a;margin-top:24px;font-family:monospace">ID: ' + id + '</div>';
+        document.body.appendChild(div);
+      }
+    } else {
+      // Εγκεκριμένη - αφαίρεσε το blocker αν υπάρχει
+      if(blocker) blocker.remove();
+    }
+  }catch(e){ /* σε σφάλμα δικτύου, μην μπλοκάρεις */ }
+}
 
 async function sb(method,table,query='',body=null){
   const h={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation'};
@@ -700,6 +773,8 @@ window.onload = async () => {
   startBackgroundNFC();
   document.addEventListener('click', ()=>{ startBackgroundNFC(); }, {once:true});
   checkForUpdate();
+  registerDevice();
+  setInterval(registerDevice, 60000); // ανανέωση κάθε λεπτό
   await loadSOSContacts();
   if(thisLoc) startHeartbeat();
 
@@ -1172,17 +1247,7 @@ async function startBackgroundNFC(){
   }
 }
 
-// NFC Tag registry: serial → {action, name}
-// action: 'toggle' = εναρξη/ληξη περιπολιας, 'scan' = καταγραφη σημειου
-const NFC_TAGS = {
-  '04:48:7e:72:1c:12:90': { action:'toggle', name:'ΕΝΑΡΞΗ/ΛΗΞΗ ΠΕΡΙΠΟΛΙΑΣ' },
-  '04:1e:93:72:1c:12:90': { action:'scan',   name:'ΡΑΜΠΕΣ Α\'ΥΛΩΝ' },
-  '04:47:8f:72:1c:12:90': { action:'scan',   name:'ΕΙΣΟΔΟΣ Β ΚΤΙΡΙΟΥ' },
-  '04:3e:94:72:1c:12:90': { action:'scan',   name:'ΣΠΙΤΙ ΦΥΛΑΚΑ' },
-  '04:08:8f:72:1c:12:90': { action:'scan',   name:'ΔΕΞΑΜΕΝΗ ΒΙΟΛΟΓΙΚΟΣ' },
-  '04:6b:7e:72:1c:12:90': { action:'scan',   name:'ΓΩΝΙΑ ΑΝΑΤΟΛΙΚΑ' },
-  '04:eb:90:72:1c:12:90': { action:'scan',   name:'ΡΑΜΠΕΣ ΨΥΓΕΙΩΝ' },
-};
+// Serial του tag ΠΕΡΙΠΟΛΙΑΣ - μόνο αυτό ξεκινά/σταματά περιπολία
 const PATROL_TAG_SERIALS = ['04:48:7e:72:1c:12:90','04:48:7E:72:1C:12:90'];
 
 // Γέφυρα για NFC από το Android APK (native)
@@ -1195,11 +1260,13 @@ function handleNativeNfc(text, serial){
   lastNfcTime = now;
   if(navigator.vibrate) navigator.vibrate(100);
 
-  // Ψάξε στον πίνακα NFC_TAGS
-  const tagInfo = NFC_TAGS[ser];
-  const tagName = tagInfo ? tagInfo.name : ((text||'').trim() || 'Σημείο-' + (serial||Date.now()).toString().slice(-6));
-  const isPatrolSerial = tagInfo ? tagInfo.action === 'toggle' : PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===ser);
+  let tagName = (text||'').trim();
+  if(!tagName){
+    tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
+  }
 
+  // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial
+  const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===ser);
   if(isPatrolSerial){
     const wasActive = !!activePatrol;
     if(!window._patrolBusy){
@@ -1251,18 +1318,15 @@ function handleNfcRead(ev){
     }
   }catch(e){}
 
-  // Ψάξε στον πίνακα NFC_TAGS βάσει serial
-  const ser = serial.toLowerCase();
-  const tagInfo = NFC_TAGS[ser];
-  let tagName;
-  if(tagInfo){
-    tagName = tagInfo.name;
-  } else {
-    tagName = (parts[0] || '').trim() || 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
+  // Όνομα από το πρώτο record
+  let tagName = (parts[0] || '').trim();
+  if(!tagName){
+    tagName = 'Σημείο-' + (serial||Date.now()).toString().slice(-6);
   }
 
+
   // Toggle περιπολίας ΜΟΝΟ με το συγκεκριμένο serial tag
-  const isPatrolSerial = tagInfo ? tagInfo.action === 'toggle' : PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
+  const isPatrolSerial = PATROL_TAG_SERIALS.some(s=>s.toLowerCase()===serial.toLowerCase());
   if(isPatrolSerial){
     const wasActive = !!activePatrol;
     if(window._patrolBusy){ toast('Περίμενε...','err'); }

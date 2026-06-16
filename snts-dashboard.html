@@ -450,6 +450,13 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   </div>
 
   <div class="div"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="sec" style="margin:0">📱 Συσκευές</div>
+    <div style="background:rgba(26,110,245,0.15);border:1px solid var(--ac);color:var(--ac);font-family:'Share Tech Mono',monospace;font-size:11px;padding:2px 10px;border-radius:20px" id="devCount">0</div>
+  </div>
+  <div id="devList" style="margin-bottom:10px"><div style="font-size:12px;color:var(--mu)">Φόρτωση...</div></div>
+
+  <div class="div"></div>
   <div class="sec">Κωδικός Πρόσβασης</div>
   <div class="card">
     <label class="lbl">Νέος Κωδικός</label>
@@ -1646,6 +1653,72 @@ async function clearHistory(type){
   }catch(e){ toast('Σφάλμα διαγραφής','err'); }
 }
 
+async function renderDevices(){
+  const el = document.getElementById('devList');
+  if(!el) return;
+  try{
+    const devices = await get('devices','order=last_seen.desc');
+    const cntEl = document.getElementById('devCount');
+    if(!Array.isArray(devices) || !devices.length){
+      el.innerHTML = '<div style="font-size:12px;color:var(--mu)">Καμία συσκευή ακόμη</div>';
+      if(cntEl) cntEl.textContent = '0';
+      return;
+    }
+    if(cntEl) cntEl.textContent = devices.length;
+    el.innerHTML = devices.map(d=>{
+      const online = d.last_seen && (Date.now()-new Date(d.last_seen))<5*60*1000;
+      const installed = d.installed_at ? new Date(d.installed_at).toLocaleDateString('el-GR') : '—';
+      const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString('el-GR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      const approved = d.approved === true;
+      const borderColor = !approved ? 'var(--y)' : (online?'var(--g)':'var(--mu)');
+      const statusBadge = !approved
+        ? '<span style="font-size:9px;background:rgba(255,193,7,0.15);color:var(--y);border:1px solid var(--y);padding:1px 7px;border-radius:10px;margin-left:6px">⏳ ΑΝΑΜΟΝΗ</span>'
+        : '<span style="font-size:9px;background:rgba(0,230,118,0.12);color:var(--g);border:1px solid var(--g);padding:1px 7px;border-radius:10px;margin-left:6px">✓ ΕΓΚΕΚΡΙΜΕΝΗ</span>';
+      const actionBtn = !approved
+        ? '<button onclick="approveDevice(\''+esc(d.device_id)+'\')" style="background:var(--g);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:8px;font-family:\'Exo 2\',sans-serif">✓ Έγκριση</button>'
+        : '<button onclick="blockDevice(\''+esc(d.device_id)+'\')" style="background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);color:var(--y);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;margin-left:6px">🚫</button>';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:6px;border-left:3px solid '+borderColor+'">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(online?'🟢':'⚫')+' '+esc(d.model||'Συσκευή')+statusBadge+'</div>'
+        +'<div style="font-size:10px;color:var(--mu);margin-top:2px">'+(d.guard_name?'👮 '+esc(d.guard_name)+' · ':'')+(d.location_name?'📍 '+esc(d.location_name):'')+'</div>'
+        +'<div style="font-size:9px;color:var(--mu);margin-top:2px">Εγκατάσταση: '+installed+' · Τελευταία: '+lastSeen+(d.app_version?' · v'+esc(d.app_version):'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center">'+actionBtn
+        +'<button onclick="removeDevice(\''+esc(d.device_id)+'\')" style="background:rgba(232,51,74,0.1);border:1px solid rgba(232,51,74,0.3);color:var(--r);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;margin-left:6px">🗑️</button>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+  }catch(e){
+    el.innerHTML = '<div style="font-size:12px;color:var(--mu)">Σφάλμα φόρτωσης</div>';
+  }
+}
+
+async function approveDevice(id){
+  try{
+    await patch('devices',`device_id=eq.${encodeURIComponent(id)}`,{approved:true});
+    toast('Συσκευή εγκρίθηκε','ok');
+    renderDevices();
+  }catch(e){ toast('Σφάλμα','err'); }
+}
+
+async function blockDevice(id){
+  if(!confirm('Ανάκληση έγκρισης; Η συσκευή θα μπλοκαριστεί.')) return;
+  try{
+    await patch('devices',`device_id=eq.${encodeURIComponent(id)}`,{approved:false});
+    toast('Συσκευή μπλοκαρίστηκε','ok');
+    renderDevices();
+  }catch(e){ toast('Σφάλμα','err'); }
+}
+
+async function removeDevice(id){
+  if(!confirm('Διαγραφή αυτής της συσκευής;')) return;
+  try{
+    await sb('DELETE','devices',`device_id=eq.${encodeURIComponent(id)}`);
+    toast('Διαγράφηκε','ok');
+    renderDevices();
+  }catch(e){ toast('Σφάλμα','err'); }
+}
+
 function renderChecklistHtml(notes, handoverFrom){
   if(!notes) return '';
   var cl;
@@ -1986,7 +2059,7 @@ function tab(t){
   document.querySelector('.tab[data-tab="'+tabKey+'"]')?.classList.add('on');
   if(t==='guards')renderGuards();
   if(t==='locations')renderLocations();
-  if(t==='settings')renderSOSContacts();
+  if(t==='settings'){ renderSOSContacts(); renderDevices(); }
   if(t==='payroll')initPayrollGuardSelect();
   if(t==='overview'){ initPatrolMap(); loadPatrols(); startPatrolLiveRefresh(); }
   else { stopPatrolLiveRefresh(); }
