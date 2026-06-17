@@ -516,7 +516,7 @@ const SB='https://eanvqkwtxbfkgpyivbml.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
 
 // ── ΕΚΔΟΣΗ & ΑΥΤΟΜΑΤΗ ΕΝΗΜΕΡΩΣΗ ──
-const APP_VERSION = '2026.06.15.5';  // άλλαξέ το σε κάθε ενημέρωση
+const APP_VERSION = '2026.06.16.1';  // άλλαξέ το σε κάθε ενημέρωση
 
 
 // ── ΑΝΑΓΝΩΡΙΣΗ ΣΥΣΚΕΥΗΣ ──
@@ -1815,7 +1815,21 @@ function hideAll(){
 }
 
 function playBeep(){
-  try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=1000;o.type='sine';g.gain.setValueAtTime(0.2,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.2);o.start();o.stop(ctx.currentTime+0.2);}catch(e){}
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // Διπλό δυνατό μπιπ (επιβεβαίωση σκαναρίσματος)
+    const beep=(freq,start,dur)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=freq;o.type='square';
+      g.gain.setValueAtTime(0.0001,ctx.currentTime+start);
+      g.gain.exponentialRampToValueAtTime(0.8,ctx.currentTime+start+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+start+dur);
+      o.start(ctx.currentTime+start);o.stop(ctx.currentTime+start+dur);
+    };
+    beep(1320,0,0.15);    // πρώτο μπιπ (ψηλό)
+    beep(1760,0.18,0.20); // δεύτερο μπιπ (πιο ψηλό)
+  }catch(e){}
 }
 function toast(msg,type){const el=document.getElementById('toast');el.textContent=msg;el.className='toast'+(type?' '+type:'');el.classList.add('on');setTimeout(()=>el.classList.remove('on'),2800);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
