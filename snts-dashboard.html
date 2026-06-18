@@ -1777,13 +1777,10 @@ function viewPatrolFromArchive(idx, isActive){
   const p = patrols[idx];
   if(!p) return;
   tab('overview');
+  // Ξεκλείδωσε το auto-zoom ώστε να φανεί όλο το δρομολόγιο
+  userFocusedPoint = false;
   setTimeout(()=>{
-    showPatrolOnMap(p, isActive);
-    const pts = parsePatrolPoints(p.points);
-    if(pts.length && patrolMap){
-      const last = pts[pts.length-1];
-      patrolMap.setView([last.lat, last.lng], 17, {animate:true});
-    }
+    showPatrolOnMap(p, isActive);  // ζουμάρει αυτόματα σε όλη τη διαδρομή (fitBounds)
     document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
   }, 400);
 }
@@ -1866,46 +1863,53 @@ function parsePatrolPoints(pts){
 function showPatrolOnMap(patrol, isLive){
   const pts = parsePatrolPoints(patrol.points);
   const noData = document.getElementById('patrolNoData');
-  const frame = document.getElementById('patrolMapFrame');
-  const overlay = document.getElementById('patrolMapOverlay');
-  const legend = document.getElementById('mapLegend');
+
+  if(!patrolMap){ initPatrolMap(); }
+
+  // Καθάρισε προηγούμενη διαδρομή
+  if(patrolPolyline){ try{patrolMap.removeLayer(patrolPolyline);}catch(e){} patrolPolyline=null; }
+  if(patrolMarkerStart){ try{patrolMap.removeLayer(patrolMarkerStart);}catch(e){} patrolMarkerStart=null; }
+  if(patrolMarkerEnd){ try{patrolMap.removeLayer(patrolMarkerEnd);}catch(e){} patrolMarkerEnd=null; }
+  if(patrolDotLayer){ try{patrolMap.removeLayer(patrolDotLayer);}catch(e){} patrolDotLayer=null; }
 
   if(!pts.length){
     if(noData) noData.style.display='flex';
-    if(frame) frame.style.display='none';
     return;
   }
-
   if(noData) noData.style.display='none';
 
-  // Build Google Maps URL with path
-  const path = pts.map(p=>`${p.lat},${p.lng}`).join('|');
-  const start = pts[0];
+  const latlngs = pts.map(p=>[p.lat,p.lng]);
+
+  // ΓΡΑΜΜΗ ΔΙΑΔΡΟΜΗΣ (το δρομολόγιο που έκανε ο φύλακας)
+  patrolPolyline = L.polyline(latlngs, {
+    color: isLive ? '#00c97a' : '#1a6ef5',
+    weight: 4,
+    opacity: 0.85,
+    smoothFactor: 1
+  }).addTo(patrolMap);
+
+  // Κουκκίδες σε κάθε σημείο GPS
+  drawPatrolDots(pts, isLive);
+
+  // Marker τέλους (ζωντανό = κόκκινο, τελειωμένο = μπλε)
   const last = pts[pts.length-1];
-  const center = `${last.lat},${last.lng}`;
+  const endIcon = L.divIcon({
+    className:'',
+    html:`<div style="font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7))">${isLive?'🔴':'🏁'}</div>`,
+    iconSize:[30,30], iconAnchor:[15,28]
+  });
+  patrolMarkerEnd = L.marker([last.lat,last.lng],{icon:endIcon}).addTo(patrolMap);
 
-  // Use Google Maps embed with markers
-  const markers = `markers=color:green%7C${start.lat},${start.lng}&markers=color:${isLive?'red':'blue'}%7Clabel:${isLive?'●':'E'}%7C${last.lat},${last.lng}`;
-  const pathParam = `path=color:${isLive?'0x00c97aFF':'0x1a6ef5FF'}|weight:4|${pts.map(p=>`${p.lat},${p.lng}`).join('|')}`;
-  const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=15&size=800x400&maptype=roadmap&${markers}&${pathParam}&key=`;
-
-  // Use OpenStreetMap iframe instead (no API key needed)
-  const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${
-    Math.min(...pts.map(p=>p.lng))-0.003
-  },${
-    Math.min(...pts.map(p=>p.lat))-0.003
-  },${
-    Math.max(...pts.map(p=>p.lng))+0.003
-  },${
-    Math.max(...pts.map(p=>p.lat))+0.003
-  }&layer=mapnik&marker=${last.lat},${last.lng}`;
-
-  if(frame){
-    frame.src = osmUrl;
-    frame.style.display = 'block';
+  // ΖΟΥΜΑΡΕ ΝΑ ΦΑΙΝΕΤΑΙ ΟΛΟ ΤΟ ΔΡΟΜΟΛΟΓΙΟ (εκτός αν ο χρήστης εστίασε χειροκίνητα)
+  if(!userFocusedPoint){
+    try{
+      patrolMap.fitBounds(patrolPolyline.getBounds(), {padding:[40,40], maxZoom:18});
+    }catch(e){}
   }
 
-  // Show overlay info
+  // Πληροφορίες (overlay legend)
+  const overlay = document.getElementById('patrolMapOverlay');
+  const legend = document.getElementById('mapLegend');
   if(overlay && legend){
     overlay.style.display='block';
     const dur = (patrol.end_time||patrol.ended_at) ?
@@ -1916,15 +1920,11 @@ function showPatrolOnMap(patrol, isLive){
         <span>🚩 Εκκίνηση</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <div style="width:10px;height:10px;border-radius:50%;background:${isLive?'var(--r)':'var(--ac)'}${isLive?';animation:blink 1s infinite':''}"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:${isLive?'var(--r)':'var(--ac)'}"></div>
         <span>${isLive?'📍 Τώρα':'🏁 Τέλος'}</span>
       </div>
       <div style="color:var(--mu);margin-top:4px">${pts.length} σημεία GPS</div>
-      ${dur!==null?`<div style="color:var(--mu)">⏱ ${dur} λεπτά</div>`:''}
-      <a href="https://www.openstreetmap.org/?mlat=${last.lat}&mlon=${last.lng}#map=16/${last.lat}/${last.lng}" 
-         target="_blank" style="display:block;margin-top:6px;color:var(--ac);font-size:10px;text-decoration:none">
-        🔗 Άνοιξε στο χάρτη →
-      </a>`;
+      ${dur!==null?`<div style="color:var(--mu)">⏱ ${dur} λεπτά</div>`:''}`;
   }
 }
 
