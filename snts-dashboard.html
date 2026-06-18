@@ -279,7 +279,8 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
   </div>
 
   <div style="position:relative;margin-bottom:14px">
-    <div id="patrolMapEl" style="height:420px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
+    <div id="patrolMapEl" style="height:520px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
+    <button onclick="resetMapView()" style="position:absolute;top:10px;right:10px;z-index:500;background:var(--ac);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.4)">📍 Επιστροφή στο στίγμα</button>
     <div id="patrolNoData" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--mu);z-index:2;background:var(--s);border-radius:14px">
       <div style="font-size:40px">🗺️</div>
       <div style="font-size:13px">Δεν υπάρχουν δεδομένα περιπολίας ακόμη</div>
@@ -524,7 +525,7 @@ body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-hei
 <script>
 const SB='https://eanvqkwtxbfkgpyivbml.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
-const PASS='239261';
+const PASS=''  /* κωδικός πλέον στη Supabase */;
 
 // ── API ──────────────────────────────────────────────
 async function sb(method,table,query='',body=null){
@@ -565,13 +566,23 @@ window.onload=()=>{
   if(document.getElementById('pTo')) document.getElementById('pTo').value=now.toISOString().split('T')[0];
 };
 
-function login(){
+async function login(){
   const u=document.getElementById('au').value.trim();
   const p=document.getElementById('ap').value;
   if(!u){toast('Εισάγετε username','err');return;}
-  if(p!==(localStorage.getItem('snts_pass')||PASS)){toast('Λάθος κωδικός','err');return;}
-  localStorage.setItem('snts_ok','1');
-  showDash();
+  // Έλεγχος κωδικού ΜΕΣΑ στη Supabase (δεν φαίνεται στον κώδικα)
+  try{
+    const r = await fetch(`${SB}/rest/v1/rpc/check_admin_login`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const txt = await r.text();
+    const ok = txt.replace(/[\"\s]/g,'') === 'true';
+    if(!ok){ toast('Λάθος στοιχεία','err'); return; }
+    localStorage.setItem('snts_ok','1');
+    showDash();
+  }catch(e){ toast('Σφάλμα σύνδεσης','err'); }
 }
 function logout(){
   isLoggedIn=false;
@@ -1323,7 +1334,11 @@ async function syncSOSContacts(contacts){
 
 function saveSettings(){
   const p=document.getElementById('newPass').value.trim();
-  if(p)localStorage.setItem('snts_pass',p);
+  if(p){
+    toast('Ο κωδικός αλλάζει μόνο από τη Supabase (ασφάλεια)','err');
+    document.getElementById('newPass').value='';
+    return;
+  }
   localStorage.setItem('snts_sos',document.getElementById('sosPhone').value.trim());
   toast('Αποθηκεύτηκε ✓','ok');
 }
@@ -1388,6 +1403,8 @@ async function markIncidentSeen(id){
 
 // ── PATROL MAP & FUNCTIONS ──────────────────────────
 
+let userFocusedPoint = false; // true όταν ο χρήστης πάτησε σημείο - σταματά το auto-zoom
+let userFocusTime = 0;
 let patrolMap = null;
 
 function initPatrolMap(){
@@ -1610,9 +1627,18 @@ async function focusGuardOnMap(guardName){
   document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
+function resetMapView(){
+  // Ξεκλείδωσε το auto-zoom και πήγαινε στην τρέχουσα περιπολία
+  userFocusedPoint = false;
+  loadPatrols();
+}
+
 function focusScanOnMap(lat, lng, name){
   document.getElementById('quickView').style.display='none';
   if(!patrolMap){ initPatrolMap(); }
+  // Σημείωσε ότι ο χρήστης εστίασε χειροκίνητα - σταμάτα το auto-zoom
+  userFocusedPoint = true;
+  userFocusTime = Date.now();
   setTimeout(()=>{
     if(patrolMap){
       patrolMap.setView([lat,lng], 18, {animate:true});
@@ -1797,11 +1823,11 @@ async function loadPatrols(){
     document.getElementById('activePatrolPoints').textContent =
       `${pts.length} σημεία GPS καταγεγραμμένα`;
     showPatrolOnMap(active, true);
-    // Zoom to last GPS point if available
-    if(pts.length > 0){
+    // Zoom to last GPS point ΜΟΝΟ αν ο χρήστης δεν εστίασε χειροκίνητα
+    if(pts.length > 0 && !userFocusedPoint){
       const last = pts[pts.length-1];
       setTimeout(()=>{
-        if(patrolMap){
+        if(patrolMap && !userFocusedPoint){
           patrolMap.setView([last.lat, last.lng], 18, {animate:true});
         }
       }, 300);
@@ -1814,10 +1840,10 @@ async function loadPatrols(){
     if(patrols.length > 0){
       showPatrolOnMap(patrols[0], false);
       const pts = parsePatrolPoints(patrols[0].points);
-      if(pts.length > 0){
+      if(pts.length > 0 && !userFocusedPoint){
         const last = pts[pts.length-1];
         setTimeout(()=>{
-          if(patrolMap){
+          if(patrolMap && !userFocusedPoint){
             patrolMap.setView([last.lat, last.lng], 18, {animate:true});
           }
         }, 300);
