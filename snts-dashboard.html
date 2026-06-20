@@ -548,7 +548,7 @@ const patch=(t,q,b)=>sb('PATCH',t,q,b);
 
 // ── STATE ────────────────────────────────────────────
 let guards=[],locations=[],shifts=[],scans=[],sosAlerts=[],heartbeats=[],patrols=[];
-let patrolPolyline=null, patrolMarker=null, patrolRefreshTimer=null, patrolMarkerStart=null, patrolMarkerEnd=null, scanMarkers=[];
+let patrolPolyline=null, patrolMarker=null, patrolRefreshTimer=null, patrolMarkerStart=null, patrolMarkerEnd=null, scanMarkers=[], shownPatrolId=null, shownPointCount=0;
 let isLoggedIn=false;
 let selLoc=null;
 let liveTimer=null;
@@ -1780,7 +1780,8 @@ function viewPatrolFromArchive(idx, isActive){
   // Ξεκλείδωσε το auto-zoom ώστε να φανεί όλο το δρομολόγιο
   userFocusedPoint = false;
   setTimeout(()=>{
-    showPatrolOnMap(p, isActive);  // ζουμάρει αυτόματα σε όλη τη διαδρομή (fitBounds)
+    shownPatrolId = p.id;  // μην ξαναζουμάρει το auto-refresh
+    showPatrolOnMap(p, isActive, true);  // ζουμάρει σε όλη τη διαδρομή ΜΙΑ φορά
     document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
   }, 400);
 }
@@ -1819,32 +1820,20 @@ async function loadPatrols(){
       `🚶 ${active.guard_name} — ${active.location_name} (από ${new Date(active.start_time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})})`;
     document.getElementById('activePatrolPoints').textContent =
       `${pts.length} σημεία GPS καταγεγραμμένα`;
-    showPatrolOnMap(active, true);
-    // Zoom to last GPS point ΜΟΝΟ αν ο χρήστης δεν εστίασε χειροκίνητα
-    if(pts.length > 0 && !userFocusedPoint){
-      const last = pts[pts.length-1];
-      setTimeout(()=>{
-        if(patrolMap && !userFocusedPoint){
-          patrolMap.setView([last.lat, last.lng], 18, {animate:true});
-        }
-      }, 300);
-    }
+    // Σχεδίασε τη διαδρομή (το showPatrolOnMap ζουμάρει μόνο αν αλλάξει η περιπολία)
+    const patrolChanged = (shownPatrolId !== active.id);
+    showPatrolOnMap(active, true, patrolChanged);
+    shownPatrolId = active.id;
+    shownPointCount = pts.length;
   } else {
     banner.style.display='none';
     dot.style.display='none';
     txt.style.display='none';
     // Show most recent patrol on map and zoom to it
     if(patrols.length > 0){
-      showPatrolOnMap(patrols[0], false);
-      const pts = parsePatrolPoints(patrols[0].points);
-      if(pts.length > 0 && !userFocusedPoint){
-        const last = pts[pts.length-1];
-        setTimeout(()=>{
-          if(patrolMap && !userFocusedPoint){
-            patrolMap.setView([last.lat, last.lng], 18, {animate:true});
-          }
-        }, 300);
-      }
+      const patrolChanged = (shownPatrolId !== patrols[0].id);
+      showPatrolOnMap(patrols[0], false, patrolChanged);
+      shownPatrolId = patrols[0].id;
     }
   }
 
@@ -1899,7 +1888,7 @@ function parsePatrolPoints(pts){
   } catch(e){ return []; }
 }
 
-function showPatrolOnMap(patrol, isLive){
+function showPatrolOnMap(patrol, isLive, shouldZoom){
   const pts = parsePatrolPoints(patrol.points);
   const noData = document.getElementById('patrolNoData');
 
@@ -1939,8 +1928,9 @@ function showPatrolOnMap(patrol, isLive){
   });
   patrolMarkerEnd = L.marker([last.lat,last.lng],{icon:endIcon}).addTo(patrolMap);
 
-  // ΖΟΥΜΑΡΕ ΝΑ ΦΑΙΝΕΤΑΙ ΟΛΟ ΤΟ ΔΡΟΜΟΛΟΓΙΟ (εκτός αν ο χρήστης εστίασε χειροκίνητα)
-  if(!userFocusedPoint){
+  // ΖΟΥΜΑΡΕ ΜΟΝΟ όταν αλλάζει η περιπολία (shouldZoom) και ο χρήστης δεν εστίασε χειροκίνητα
+  // Έτσι ΔΕΝ ζουμάρει συνέχεια στο auto-refresh
+  if(shouldZoom && !userFocusedPoint){
     try{
       patrolMap.fitBounds(patrolPolyline.getBounds(), {padding:[40,40], maxZoom:18});
     }catch(e){}
