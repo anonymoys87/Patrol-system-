@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060e1f">
+<title>SNTS Hellas — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+:root{
+  --bg:#04080f;--s:#080f1e;--s2:#0d1628;
+  --ac:#2979ff;--y:#ffc107;--g:#00e676;--r:#ff1744;
+  --tx:#e8f0fe;--mu:#546e7a;--br:rgba(41,121,255,0.15);
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body::after{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;height:380px;background:url('new_logo.png') center center / contain no-repeat;opacity:0.12;pointer-events:none;z-index:0}
+.panel,.hdr,.tabs,.top,.login{position:relative;z-index:1}
+body{font-family:'Exo 2',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;-webkit-font-smoothing:antialiased}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(41,121,255,0.3)}50%{box-shadow:0 0 40px rgba(41,121,255,0.6),0 0 80px rgba(41,121,255,0.2)}}
+.hero-header{background:linear-gradient(135deg,#04080f 0%,#0a1628 40%,#0d1f3c 60%,#04080f 100%);border-bottom:1px solid rgba(41,121,255,0.3);padding:0;position:relative;width:100%;display:block}
+.hero-header::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(41,121,255,0.05),transparent);animation:shimmer 4s infinite linear;background-size:200% auto}
+.hero-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:relative;z-index:1;min-height:70px;gap:16px}
+.hero-brand{display:flex;align-items:center;gap:14px}
+.hero-logo{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 0 12px rgba(41,121,255,0.6));animation:pulse-glow 3s ease-in-out infinite}
+.hero-title{font-size:20px;font-weight:900;letter-spacing:3px;background:linear-gradient(90deg,#fff,#2979ff,#fff);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite}
+.hero-sub{font-size:9px;color:var(--mu);letter-spacing:4px;text-transform:uppercase;margin-top:2px}
+.hero-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+@keyframes sos{0%,100%{background:rgba(232,51,74,0.1)}50%{background:rgba(232,51,74,0.3)}}
+
+/* LOGIN */
+.login{position:fixed;inset:0;background:linear-gradient(160deg,#04080f 0%,#0a0f20 50%,#04080f 100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{width:90px;height:90px;background:linear-gradient(135deg,var(--ac),#0d4db5);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:16px;box-shadow:0 8px 32px rgba(26,110,245,0.5)}
+.inp{width:100%;max-width:340px;background:var(--s2);border:1px solid var(--br);border-radius:12px;padding:14px 16px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:15px;outline:none;margin-bottom:12px;display:block;transition:border-color .2s}
+.inp:focus{border-color:var(--ac)}
+.inp::placeholder{color:var(--mu)}
+.btn-ac{background:linear-gradient(135deg,#2979ff,#1a56d6);border:none;color:#fff;font-family:'Exo 2',sans-serif;font-weight:700;letter-spacing:2px;cursor:pointer;border-radius:12px;transition:all .15s;box-shadow:0 4px 15px rgba(41,121,255,0.3)}
+.btn-ac:hover{box-shadow:0 6px 20px rgba(41,121,255,0.5)}
+.btn-ac:active{transform:scale(0.98)}
+
+/* TOPBAR */
+.top{display:none}
+.top-logo{display:flex;align-items:center;gap:10px}
+.top-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--ac),#0d4db5);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.live{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;background:rgba(0,201,122,0.1);border:1px solid var(--g);font-size:10px;font-weight:700;color:var(--g)}
+.livdot{width:6px;height:6px;border-radius:50%;background:var(--g);animation:blink 1.2s infinite}
+
+/* TABS */
+.tabs{display:flex;background:rgba(6,14,31,0.95);border-bottom:1px solid var(--br);position:sticky;top:59px;z-index:40;overflow-x:auto}
+.tab{flex:1;min-width:60px;padding:10px 4px;text-align:center;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);background:rgba(26,110,245,0.05)}
+.ti{font-size:14px;display:block;margin-bottom:2px}
+.panel{display:none;padding:14px;padding-bottom:40px}
+.panel.on{display:block;animation:fadeIn .2s ease}
+
+/* CARDS */
+.card{background:linear-gradient(135deg,var(--s),rgba(13,22,40,0.8));border:1px solid var(--br);border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(41,121,255,0.3),transparent)}
+.card.green{border-color:rgba(0,201,122,0.4);background:linear-gradient(135deg,rgba(0,201,122,0.06),var(--s))}
+.card.yellow{border-color:rgba(232,180,0,0.3)}
+.card.red{border-color:rgba(232,51,74,0.4);animation:sos 1.5s infinite}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{background:linear-gradient(135deg,var(--s),var(--s2));border:1px solid var(--br);border-radius:14px;padding:14px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ac),transparent)}
+.stat-n{font-family:'Share Tech Mono',monospace;font-size:28px;color:var(--ac);display:block}
+.stat-n.g{color:var(--g)}.stat-n.y{color:var(--y)}.stat-n.r{color:var(--r)}
+.stat-l{font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+
+/* FIELD */
+.lbl{font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;display:block}
+.field{width:100%;background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:12px 14px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:14px;outline:none;transition:border-color .2s;margin-bottom:10px}
+.field:focus{border-color:var(--ac)}
+.field::placeholder{color:var(--mu)}
+.field option{background:var(--s2)}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* BADGE */
+.badge{font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700;font-family:'Share Tech Mono',monospace}
+.badge.on{background:rgba(0,201,122,0.15);border:1px solid var(--g);color:var(--g)}
+.badge.off{background:var(--s2);border:1px solid var(--br);color:var(--mu)}
+
+/* MODAL */
+.modal-wrap{position:fixed;inset:0;background:rgba(6,14,31,0.92);backdrop-filter:blur(8px);z-index:200;display:none;align-items:flex-end}
+.modal-wrap.on{display:flex}
+.modal{width:100%;background:var(--s);border-top:1px solid var(--br);border-radius:20px 20px 0 0;padding:20px 16px 36px;animation:slideUp .3s ease;max-height:90vh;overflow-y:auto}
+.modal-t{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--y);letter-spacing:2px;text-transform:uppercase}
+.mbtns{display:flex;gap:10px;margin-top:14px}
+.btn-ok{flex:1;padding:13px;border-radius:10px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);color:var(--ac);font-family:'Exo 2',sans-serif;font-size:13px;font-weight:700;cursor:pointer}
+.btn-no{padding:13px 16px;border-radius:10px;background:var(--s2);border:1px solid var(--br);color:var(--mu);font-family:'Exo 2',sans-serif;font-size:13px;cursor:pointer}
+
+/* MISC */
+.sec{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--ac);margin-bottom:10px;margin-top:2px}
+.div{height:1px;background:var(--br);margin:14px 0}
+.empty{text-align:center;padding:30px 20px;color:var(--mu);font-size:13px}
+.btn-add{width:100%;padding:12px;border-radius:12px;background:rgba(26,110,245,0.08);border:1px dashed var(--ac);color:var(--ac);font-family:'Exo 2',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;margin-bottom:12px}
+.btn-del{width:34px;height:34px;border-radius:8px;background:rgba(232,51,74,0.08);border:1px solid rgba(232,51,74,0.3);color:var(--r);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-call{display:flex;align-items:center;justify-content:center;gap:5px;flex:1;padding:10px;border-radius:10px;background:rgba(0,201,122,0.1);border:1px solid var(--g);color:var(--g);font-size:12px;font-weight:700;text-decoration:none}
+.rate-tag{display:inline-block;padding:4px 10px;border-radius:8px;background:rgba(232,180,0,0.12);border:1px solid rgba(232,180,0,0.3);color:var(--y);font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;margin-top:8px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--s2);border:1px solid var(--ac);color:var(--ac);padding:10px 20px;border-radius:30px;font-family:'Share Tech Mono',monospace;font-size:12px;z-index:500;transition:transform .3s;white-space:nowrap}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--g);color:var(--g)}
+.toast.err{border-color:var(--r);color:var(--r)}
+.rbtn{padding:7px 12px;border-radius:20px;background:rgba(26,110,245,0.1);border:1px solid var(--br);color:var(--ac);font-size:11px;cursor:pointer;font-family:'Exo 2',sans-serif;font-weight:600}
+.loc-btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.loc-btn{padding:8px 14px;border-radius:20px;background:var(--s2);border:1px solid var(--br);color:var(--mu);font-family:'Exo 2',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.loc-btn.active{background:rgba(26,110,245,0.15);border-color:var(--ac);color:var(--ac)}
+.loc-btn.has{border-color:rgba(0,201,122,0.4);color:var(--g);background:rgba(0,201,122,0.08)}
+.loc-btn.has.active{background:rgba(0,201,122,0.18)}
+
+/* ── RESPONSIVE ─────────────────────────────────── */
+
+/* Tablet (768px - 1024px) */
+@media (min-width: 768px) {
+  body { font-size: 15px; }
+  .panel { padding: 20px; max-width: 900px; margin: 0 auto; }
+  .stats { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .fg { grid-template-columns: 1fr 1fr 1fr; }
+  .card { padding: 18px; }
+  .modal { max-width: 500px; margin: 0 auto; }
+  .modal-wrap { align-items: center; justify-content: center; }
+  .tabs .tab { font-size: 11px; padding: 12px 8px; }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .panel { max-width: 1100px; padding: 24px; }
+  .stats { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-n { font-size: 36px; }
+  .fg { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { padding: 20px; }
+  #guardsList { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  #locList { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  #incidentsList { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .tabs .tab { font-size: 12px; padding: 14px 10px; }
+  .hero-header .snts-title { font-size: 26px; }
+}
+
+/* Large Desktop (1440px+) */
+@media (min-width: 1440px) {
+  .panel { max-width: 1300px; }
+  #guardsList { grid-template-columns: 1fr 1fr 1fr; }
+  #locList { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* Mobile small (< 380px) */
+@media (max-width: 380px) {
+  .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-n { font-size: 24px; }
+  .tab { font-size: 8px; padding: 8px 2px; }
+  .card { padding: 12px; }
+}
+.patrol-tooltip {
+  background: rgba(6,14,31,0.9);
+  border: 1px solid rgba(41,121,255,0.4);
+  color: #dce8ff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+.patrol-tooltip::before { display:none; }
+</style>
+</head>
+<body>
+
+<div class="login" id="loginWrap" style="background:linear-gradient(160deg,#04080f 0%,#0a1628 50%,#04080f 100%)">
+  <!-- Decorative lines -->
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    <div style="position:absolute;top:20%;left:-10%;width:120%;height:1px;background:linear-gradient(90deg,transparent,rgba(41,121,255,0.2),transparent);transform:rotate(-5deg)"></div>
+    <div style="position:absolute;top:40%;left:-10%;width:120%;height:1px;background:linear-gradient(90deg,transparent,rgba(41,121,255,0.1),transparent);transform:rotate(-5deg)"></div>
+    <div style="position:absolute;top:60%;left:-10%;width:120%;height:1px;background:linear-gradient(90deg,transparent,rgba(41,121,255,0.15),transparent);transform:rotate(-5deg)"></div>
+    <div style="position:absolute;top:80%;left:-10%;width:120%;height:1px;background:linear-gradient(90deg,transparent,rgba(41,121,255,0.08),transparent);transform:rotate(-5deg)"></div>
+  </div>
+  <img src="new_logo.png" style="width:110px;height:110px;object-fit:contain;margin-bottom:12px">
+  <div style="font-size:26px;font-weight:900;margin-bottom:4px;letter-spacing:4px;background:linear-gradient(90deg,#fff,#2979ff,#fff);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite">SNTS HELLAS</div>
+  <div style="font-size:10px;color:var(--mu);letter-spacing:4px;text-transform:uppercase;margin-bottom:4px">HELLAS SECURITY</div>
+  <div style="font-size:11px;color:var(--ac);letter-spacing:2px;margin-bottom:28px;padding:4px 16px;border:1px solid rgba(41,121,255,0.3);border-radius:20px">ΠΑΝΕΛ ΔΙΑΧΕΙΡΙΣΗΣ</div>
+  <input class="inp" id="au" placeholder="Username" type="text">
+  <input class="inp" id="ap" placeholder="Κωδικός" type="password" onkeydown="if(event.key==='Enter')login()">
+  <button class="btn-ac" style="width:100%;max-width:340px;padding:16px;font-size:15px" onclick="login()">ΕΙΣΟΔΟΣ →</button>
+  <div style="font-size:10px;color:var(--mu);margin-top:16px">SNTS Hellas Security</div>
+  <div style="font-size:9px;color:var(--mu);margin-top:6px;opacity:0.7">📞 213 0262209 · 697 688 8568 · ✉️ info@snts.gr</div>
+  <div style="font-size:9px;color:var(--mu);margin-top:2px;opacity:0.5">snts.gr</div>
+</div>
+
+<div class="hero-header" id="topbar" style="display:none">
+  <!-- Γραμμή 1: Λογότυπο κεντρικό -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid rgba(41,121,255,0.2)">
+    <img src="new_logo.png" style="width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(41,121,255,0.6))">
+    <div style="text-align:center">
+      <div style="font-size:20px;font-weight:900;letter-spacing:4px;background:linear-gradient(90deg,#fff,#2979ff,#fff);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite">SNTS HELLAS</div>
+      <div style="font-size:9px;color:var(--mu);letter-spacing:3px;text-transform:uppercase;margin-top:2px">HELLAS SECURITY · MANAGEMENT DASHBOARD</div>
+    </div>
+    <img src="new_logo.png" style="width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(41,121,255,0.6))">
+  </div>
+  <!-- Γραμμή 2: LIVE + Ώρα -->
+  <div style="display:flex;align-items:center;padding:7px 20px;background:rgba(0,0,0,0.3)">
+    <div style="display:flex;align-items:center;gap:6px;flex:1">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--g);animation:blink 1.5s infinite;box-shadow:0 0 6px var(--g)"></div>
+      <span style="font-size:10px;color:var(--g);font-weight:700;letter-spacing:2px">LIVE</span>
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--tx);font-weight:700;letter-spacing:2px;text-align:center;flex:1" id="clk"></div>
+    <div style="flex:1"></div>
+  </div>
+</div>
+<!-- Γραμμή 3: Tabs + Κουμπιά -->
+<div id="tabs" style="display:none">
+  <div style="display:flex;align-items:center;background:var(--s);border-bottom:1px solid var(--br)">
+    <div style="flex:1"></div>
+    <div class="tabs" style="border-bottom:none;display:flex;justify-content:center">
+      <div class="tab on" data-tab="overview" onclick="tab('overview')"><span class="ti">👁️</span>ΕΙΚΟΝΑ</div>
+      <div class="tab" data-tab="settings" onclick="tab('settings')" style="display:none"></div>
+    </div>
+    <div style="flex:1;display:flex;gap:6px;padding:0 10px;flex-shrink:0;align-items:center;justify-content:flex-end">
+      <div onclick="tab('settings')" title="Ρυθμίσεις" style="width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid var(--br);color:var(--ac);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none">⚙️</div>
+      <div onclick="logout()" title="Logout" style="width:36px;height:36px;border-radius:8px;background:transparent;border:1px solid rgba(232,51,74,0.3);color:var(--r);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none">⏻</div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERVIEW -->
+<div class="panel on" id="panel-overview">
+  <div class="card red" id="sosBanner" style="display:none">
+    <div style="font-size:14px;font-weight:900;color:var(--r)">🆘 ΕΝΕΡΓΟ SOS!</div>
+    <div style="font-size:13px;margin-top:4px" id="sosText"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat" onclick="showQuick('onduty')" style="cursor:pointer"><span class="stat-n g" id="stOn">0</span><div class="stat-l">Σε Βάρδια Τώρα</div></div>
+    <div class="stat" onclick="showQuick('guards')" style="cursor:pointer"><span class="stat-n" id="stAll">0</span><div class="stat-l">Σύνολο Φυλάκων</div></div>
+    <div class="stat" onclick="showQuick('scans')" style="cursor:pointer"><span class="stat-n y" id="stScans">0</span><div class="stat-l">Σκαν Σήμερα</div></div>
+    <div class="stat" onclick="showQuick('sos')" style="cursor:pointer"><span class="stat-n r" id="stSOS">0</span><div class="stat-l">Ενεργά SOS</div></div>
+  </div>
+
+  <!-- Quick view popup -->
+  <div id="quickView" style="display:none;background:var(--s);border:1px solid var(--ac);border-radius:14px;padding:14px;margin-bottom:14px;animation:fadeIn 0.2s">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div id="quickTitle" style="font-size:13px;font-weight:700;color:var(--ac);letter-spacing:1px"></div>
+      <button onclick="document.getElementById('quickView').style.display='none'" style="background:transparent;border:none;color:var(--mu);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div id="quickBody"></div>
+  </div>
+
+  <div class="sec">Εικόνα ανά Χώρο Φύλαξης</div>
+  <div class="loc-btns" id="locBtns"></div>
+  <div id="locDetail"></div>
+
+
+  <div class="div"></div>
+
+  <!-- ΧΑΡΤΗΣ ΠΕΡΙΠΟΛΙΩΝ -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="sec" style="margin:0">🗺️ Περιπολίες Live</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="patrolGuardFilter" onchange="loadPatrols()" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:6px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;cursor:pointer">
+        <option value="all">👮 Όλοι</option>
+      </select>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g);font-weight:700">
+        <div id="livePatrolDot" style="width:8px;height:8px;border-radius:50%;background:var(--g);animation:blink 1s infinite;display:none"></div>
+        <span id="livePatrolTxt" style="display:none">LIVE</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="activePatrolBanner" style="display:none;background:rgba(0,201,122,0.1);border:1px solid rgba(0,201,122,0.3);border-radius:12px;padding:12px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;color:var(--g)" id="activePatrolInfo">🚶 Ενεργή περιπολία...</div>
+    <div style="font-size:11px;color:var(--mu);margin-top:4px" id="activePatrolPoints">0 σημεία GPS</div>
+  </div>
+
+  <div style="position:relative;margin-bottom:14px">
+    <div id="patrolMapEl" style="height:520px;border-radius:14px;border:1px solid var(--br);background:#0a1628;z-index:1"></div>
+    <button onclick="resetMapView()" style="position:absolute;top:10px;right:10px;z-index:500;background:var(--ac);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.4)">📍 Επιστροφή στο στίγμα</button>
+    <div id="patrolNoData" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--mu);z-index:2;background:var(--s);border-radius:14px">
+      <div style="font-size:40px">🗺️</div>
+      <div style="font-size:13px">Δεν υπάρχουν δεδομένα περιπολίας ακόμη</div>
+    </div>
+    <div id="patrolMapOverlay" style="display:none;position:absolute;top:10px;left:10px;z-index:1000;background:rgba(6,14,31,0.9);backdrop-filter:blur(8px);border:1px solid rgba(41,121,255,0.3);border-radius:12px;padding:12px;max-width:280px">
+      <div id="mapLegend" style="font-size:12px;color:var(--tx)"></div>
+    </div>
+  </div>
+  <div class="div"></div>
+
+</div>
+
+<!-- GUARDS -->
+<div class="panel" id="panel-guards">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+  <button class="btn-add" onclick="openModal('mGuard')">+ ΠΡΟΣΘΗΚΗ ΦΥΛΑΚΑ</button>
+  <div class="sec">Προσωπικό Ασφαλείας</div>
+  <div id="guardsList"></div>
+</div>
+
+<!-- LOCATIONS -->
+<div class="panel" id="panel-locations">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+  <button class="btn-add" onclick="openModal('mLoc')">+ ΠΡΟΣΘΗΚΗ ΧΩΡΟΥ ΦΥΛΑΞΗΣ</button>
+  <div class="sec">Χώροι Φύλαξης</div>
+  <div id="locList"></div>
+</div>
+
+<!-- PAYROLL -->
+<div class="panel" id="panel-payroll">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+  <div class="sec">Μισθοδοσία</div>
+
+  <!-- Guard selector -->
+  <div class="card" style="margin-bottom:12px">
+    <label class="lbl">Επίλεξε Φύλακα</label>
+    <select id="payGuardSel" onchange="loadGuardPayroll()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:10px;padding:13px 14px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:14px;outline:none;cursor:pointer;margin-bottom:0">
+      <option value="">— Επιλέξτε Φύλακα —</option>
+    </select>
+  </div>
+
+  <!-- Guard payroll detail -->
+  <div id="payDetail"></div>
+</div>
+
+
+
+<!-- ΑΡΧΕΙΟ -->
+<div class="panel" id="panel-archive">
+<button onclick="tab('settings')" style="background:transparent;border:1px solid var(--br);border-radius:8px;padding:6px 12px;color:var(--mu);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif;margin-bottom:12px">← Ρυθμίσεις</button>
+<div style="background:rgba(232,51,74,0.06);border:1px solid rgba(232,51,74,0.25);border-radius:12px;padding:12px;margin-bottom:16px">
+  <div style="font-size:12px;font-weight:700;color:var(--r);margin-bottom:8px">🗑️ Καθαρισμός Ιστορικού</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="clearHistory('patrol_scans')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Σκαν</button>
+    <button onclick="clearHistory('shifts')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Βάρδιες</button>
+    <button onclick="clearHistory('patrols')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Περιπολίες</button>
+    <button onclick="clearHistory('incidents')" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">Συμβάντα</button>
+    <button onclick="clearHistory('all')" style="background:rgba(232,51,74,0.15);border:1px solid var(--r);border-radius:8px;padding:8px 12px;color:var(--r);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">ΟΛΟ ΤΟ ΙΣΤΟΡΙΚΟ</button>
+    <button onclick="clearHistory('everything')" style="background:var(--r);border:1px solid var(--r);border-radius:8px;padding:8px 12px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">🔄 ΜΗΔΕΝΙΣΜΟΣ ΟΛΩΝ</button>
+  </div>
+</div>
+  <!-- Αναφορές Συμβάντων -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="sec" style="margin:0">⚠️ Αναφορές Συμβάντων</div>
+  </div>
+  <!-- Φίλτρα συμβάντων -->
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <select id="incFilterGuard" onchange="renderIncidents()" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:7px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;cursor:pointer">
+      <option value="all">👮 Όλοι οι φύλακες</option>
+    </select>
+    <select id="incFilterSeen" onchange="renderIncidents()" style="background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:7px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none;cursor:pointer">
+      <option value="all">📋 Όλα</option>
+      <option value="unseen">🔴 Αδιάβαστα</option>
+      <option value="seen">✅ Διαβασμένα</option>
+    </select>
+  </div>
+  <div id="incidentsList"></div>
+
+  <div class="div"></div>
+
+  <!-- Ιστορικό με φίλτρα -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="sec" style="margin:0">📋 Ιστορικό</div>
+    <button onclick="toggleHistory()" id="historyToggleBtn" style="padding:6px 14px;border-radius:20px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);color:var(--ac);font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer">▼ Φίλτρα</button>
+  </div>
+
+  <!-- Φίλτρα (κρυφά αρχικά) -->
+  <div id="historyFilters" style="display:none;background:var(--s);border:1px solid var(--br);border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <label style="font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px">📍 Χώρος</label>
+        <select id="hisLocFilter" onchange="updateHisGuards();applyHistoryFilters()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;cursor:pointer">
+          <option value="all">Όλοι οι Χώροι</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px">👮 Φύλακας</label>
+        <select id="hisGuardFilter" onchange="applyHistoryFilters()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:13px;outline:none;cursor:pointer">
+          <option value="all">Όλοι οι Φύλακες</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <label style="font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px">📅 Από</label>
+        <input type="date" id="hisFrom" onchange="applyHistoryFilters()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none">
+      </div>
+      <div>
+        <label style="font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px">📅 Έως</label>
+        <input type="date" id="hisTo" onchange="applyHistoryFilters()" style="width:100%;background:var(--s2);border:1px solid var(--br);border-radius:8px;padding:9px 10px;color:var(--tx);font-family:'Exo 2',sans-serif;font-size:12px;outline:none">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="setHisView('shifts')" id="hvShifts" style="flex:1;padding:8px;border-radius:8px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);color:var(--ac);font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer">⏱ Βάρδιες</button>
+      <button onclick="setHisView('scans')" id="hvScans" style="flex:1;padding:8px;border-radius:8px;background:var(--s2);border:1px solid var(--br);color:var(--mu);font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer">📡 Σκαν</button>
+      <button onclick="setHisView('both')" id="hvBoth" style="flex:1;padding:8px;border-radius:8px;background:var(--s2);border:1px solid var(--br);color:var(--mu);font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer">📋 Και τα 2</button>
+    </div>
+  </div>
+
+  <div id="shiftHistory"></div>
+
+  <div class="div"></div>
+  <div class="sec">Ιστορικό Περιπολιών</div>
+  <div id="patrolList"><div class="empty">Φόρτωση...</div></div>
+</div>
+
+<!-- SETTINGS --><!-- PATROLS -->
+
+<!-- SETTINGS -->
+<div class="panel" id="panel-settings">
+  <div class="sec">Ρυθμίσεις</div>
+
+  <!-- Settings menu -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <div onclick="tab('guards')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">👥</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΦΥΛΑΚΕΣ</div>
+    </div>
+    <div onclick="tab('locations')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">📍</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΧΩΡΟΙ</div>
+    </div>
+    <div onclick="tab('payroll')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">💶</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΜΙΣΘΟΙ</div>
+    </div>
+    <div onclick="tab('archive')" style="cursor:pointer;background:var(--s);border:1px solid var(--br);border-radius:14px;padding:18px 10px;text-align:center">
+      <div style="font-size:26px;margin-bottom:6px">📋</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px">ΑΡΧΕΙΟ</div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;color:var(--mu);margin-bottom:12px;line-height:1.7">
+      Προσθέστε τηλέφωνα επικοινωνίας για SOS.<br>
+      Ο φύλακας επιλέγει ποιον θα καλέσει.
+    </div>
+
+    <!-- SOS Contacts List -->
+    <div id="sosContactsList" style="margin-bottom:12px"></div>
+
+    <!-- Add contact form -->
+    <div style="background:var(--s2);border-radius:10px;padding:12px;border:1px dashed var(--br)">
+      <div style="font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">+ Νέο Τηλέφωνο SOS</div>
+      <input class="field" id="sosName" placeholder="Όνομα (π.χ. Επόπτης Νίκος)" style="margin-bottom:8px">
+      <input class="field" id="sosPhone" placeholder="+30 6900000000" type="tel" style="margin-bottom:8px">
+      <button class="btn-ac" style="width:100%;padding:11px;font-size:12px" onclick="addSOSContact()">+ ΠΡΟΣΘΗΚΗ</button>
+    </div>
+  </div>
+
+  <div class="div"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="sec" style="margin:0">📱 Συσκευές</div>
+    <div style="background:rgba(26,110,245,0.15);border:1px solid var(--ac);color:var(--ac);font-family:'Share Tech Mono',monospace;font-size:11px;padding:2px 10px;border-radius:20px" id="devCount">0</div>
+  </div>
+  <div id="devList" style="margin-bottom:10px"><div style="font-size:12px;color:var(--mu)">Φόρτωση...</div></div>
+
+  <div class="div"></div>
+  <div class="sec">Κωδικός Πρόσβασης</div>
+  <div class="card">
+    <label class="lbl">Νέος Κωδικός</label>
+    <input class="field" id="newPass" placeholder="••••••••" type="password" style="margin-bottom:0">
+    <button class="btn-ac" style="width:100%;padding:13px;margin-top:10px" onclick="saveSettings()">💾 ΑΠΟΘΗΚΕΥΣΗ</button>
+  </div>
+  <div class="div"></div>
+  <div class="sec">Εξαγωγή</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div onclick="exportPDF()" style="background:var(--s);border:1px solid rgba(232,51,74,0.35);border-radius:14px;padding:18px;text-align:center;cursor:pointer">
+      <div style="font-size:30px;margin-bottom:6px">📄</div><div style="font-size:12px;font-weight:700;color:var(--r)">PDF</div>
+    </div>
+    <div onclick="exportXLS()" style="background:var(--s);border:1px solid rgba(0,201,122,0.35);border-radius:14px;padding:18px;text-align:center;cursor:pointer">
+      <div style="font-size:30px;margin-bottom:6px">📊</div><div style="font-size:12px;font-weight:700;color:var(--g)">EXCEL</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Guard -->
+<div class="modal-wrap" id="mGuard">
+  <div class="modal">
+    <div class="modal-t modal-title">👤 Νέος Φύλακας</div>
+    <label class="lbl">Ονοματεπώνυμο *</label>
+    <input class="field" id="gN" placeholder="π.χ. Γιώργος Παπαδόπουλος">
+    <label class="lbl">Τηλέφωνο *</label>
+    <input class="field" id="gP" placeholder="+30 6900000000" type="tel">
+    <label class="lbl">Ρόλος</label>
+    <select class="field" id="gR" style="cursor:pointer">
+      <option>Φύλακας</option><option>Επόπτης</option><option>Οδηγός</option>
+    </select>
+    <label class="lbl">Χώρος Φύλαξης *</label>
+    <select class="field" id="gL" style="cursor:pointer">
+      <option value="">— Επιλέξτε —</option>
+    </select>
+    <label class="lbl">€ / Ώρα *</label>
+    <input class="field" id="gW" placeholder="π.χ. 5.50" type="number" step="0.5" min="0">
+    <label class="lbl">Σημειώσεις</label>
+    <input class="field" id="gNote" placeholder="Προαιρετικό">
+    <label class="lbl">🔑 ΚΩΔΙΚΟΣ ΦΥΛΑΚΑ (προαιρετικό)</label>
+    <input class="field" id="gPin" placeholder="π.χ. 1234" type="password" style="margin-bottom:0">
+    <div class="mbtns">
+      <button class="btn-no" onclick="closeModal('mGuard')">Ακύρωση</button>
+      <button class="btn-ok btn-save" onclick="saveGuard()">✓ Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Location -->
+<div class="modal-wrap" id="mLoc">
+  <div class="modal">
+    <div class="modal-t">📍 Νέος Χώρος Φύλαξης</div>
+    <label class="lbl">Όνομα *</label>
+    <input class="field" id="lN" placeholder="π.χ. Αποθήκη Κεντρική">
+    <label class="lbl">Διεύθυνση</label>
+    <input class="field" id="lA" placeholder="Οδός, Πόλη" style="margin-bottom:0">
+    <div class="mbtns">
+      <button class="btn-no" onclick="closeModal('mLoc')">Ακύρωση</button>
+      <button class="btn-ok" onclick="saveLoc()">✓ Αποθήκευση</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB='https://eanvqkwtxbfkgpyivbml.supabase.co';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhbnZxa3d0eGJma2dweWl2Ym1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzI0NTEsImV4cCI6MjA5NjE0ODQ1MX0.TvBGxMR64aXwq_579gxjMUjy6Kw_f-GaDzLELiatICk';
+const PASS=''  /* κωδικός πλέον στη Supabase */;
+
+// ── API ──────────────────────────────────────────────
+async function sb(method,table,query='',body=null){
+  const opts={method,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
+  if(body)opts.body=JSON.stringify(body);
+  try{
+    const r=await fetch(`${SB}/rest/v1/${table}?${query}`,opts);
+    const j=await r.json();
+    const arr = Array.isArray(j)?j:(j&&j.length!==undefined?j:[j]);
+    // Για DELETE: αν επιστρέψει κενό = μπλοκαρίστηκε από RLS
+    if(method==='DELETE'){
+      arr._deletedCount = Array.isArray(j) ? j.length : 0;
+    }
+    return arr;
+  }catch(e){return[];}
+}
+const get=(t,q)=>sb('GET',t,q);
+const post=(t,b)=>sb('POST',t,'',b);
+const patch=(t,q,b)=>sb('PATCH',t,q,b);
+
+// ── STATE ────────────────────────────────────────────
+let guards=[],locations=[],shifts=[],scans=[],sosAlerts=[],heartbeats=[],patrols=[];
+let patrolPolyline=null, patrolMarker=null, patrolRefreshTimer=null, patrolMarkerStart=null, patrolMarkerEnd=null, scanMarkers=[];
+let isLoggedIn=false;
+let selLoc=null;
+let liveTimer=null;
+let currentTab='overview';
+
+// ── CLOCK ────────────────────────────────────────────
+setInterval(()=>{const e=document.getElementById('clk');if(e)e.textContent=new Date().toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});},1000);
+
+// ── INIT ─────────────────────────────────────────────
+window.onload=()=>{
+  if(localStorage.getItem('snts_ok'))showDash();
+  document.getElementById('sosPhone').value=localStorage.getItem('snts_sos')||'';
+  const now=new Date();
+  if(document.getElementById('pFrom')) document.getElementById('pFrom').value=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
+  if(document.getElementById('pTo')) document.getElementById('pTo').value=now.toISOString().split('T')[0];
+};
+
+async function login(){
+  const u=document.getElementById('au').value.trim();
+  const p=document.getElementById('ap').value;
+  if(!u){toast('Εισάγετε username','err');return;}
+  // Έλεγχος κωδικού ΜΕΣΑ στη Supabase (δεν φαίνεται στον κώδικα)
+  try{
+    const r = await fetch(`${SB}/rest/v1/rpc/check_admin_login`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const txt = await r.text();
+    const ok = txt.replace(/[\"\s]/g,'') === 'true';
+    if(!ok){ toast('Λάθος στοιχεία','err'); return; }
+    localStorage.setItem('snts_ok','1');
+    showDash();
+  }catch(e){ toast('Σφάλμα σύνδεσης','err'); }
+}
+function logout(){
+  isLoggedIn=false;
+  currentTab='overview';
+  try{localStorage.removeItem('snts_ok');}catch(e){}
+  clearInterval(liveTimer);
+  liveTimer=null;
+  document.getElementById('topbar').style.display='none';
+  document.getElementById('tabs').style.display='none';
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('loginWrap').style.display='flex';
+  try{document.getElementById('pwInput').value='';}catch(e){}
+}
+function showDash(){
+  isLoggedIn=true;
+  const savedTab = localStorage.getItem('snts_tab')||'overview';
+  document.getElementById('loginWrap').style.display='none';
+  document.getElementById('topbar').style.display='block';
+  document.getElementById('tabs').style.display='block';
+  tab(savedTab);
+  load();
+  liveTimer=setInterval(silentLoad,5000);
+}
+
+// ── SILENT BACKGROUND REFRESH (no UI changes) ──────
+async function silentLoad(){
+  const [g,l,sh,sc,sos,hb]=await Promise.all([
+    get('guards','order=full_name.asc&active=eq.true'),
+    get('locations','order=name.asc'),
+    get('shifts','order=start_time.desc&limit=50'),
+    get('patrol_scans','order=scanned_at.desc&limit=200'),
+    get('sos_alerts','resolved=eq.false&order=created_at.desc&select=*'),
+    get('device_heartbeat','order=last_seen.desc')
+  ]);
+  if(Array.isArray(g))guards=g;
+  if(Array.isArray(l))locations=l;
+  if(Array.isArray(sh))shifts=sh;
+  if(Array.isArray(sc))scans=sc;
+  if(Array.isArray(sos))sosAlerts=sos;
+  if(Array.isArray(hb))heartbeats=hb;
+
+  // Only update stats numbers and SOS banner - never switch tabs
+  const today=new Date().toISOString().split('T')[0];
+  const activeShifts=shifts.filter(s=>s.status==='active');
+  const todayScans=scans.filter(s=>s.scanned_at&&s.scanned_at.startsWith(today));
+  const stOn=document.getElementById('stOn');
+  const stAll=document.getElementById('stAll');
+  const stScans=document.getElementById('stScans');
+  const stSOS=document.getElementById('stSOS');
+  if(stOn)stOn.textContent=activeShifts.length;
+  if(stAll)stAll.textContent=guards.length;
+  if(stScans)stScans.textContent=todayScans.length;
+  if(stSOS)stSOS.textContent=sosAlerts.length;
+
+  // Update SOS banner
+  const sosBanner=document.getElementById('sosBanner');
+  if(sosBanner){
+    if(sosAlerts.length){
+      sosBanner.style.display='block';
+      const sosText=document.getElementById('sosText');
+      if(sosText)sosText.textContent=`${sosAlerts.length} ενεργή ειδοποίηση SOS!`;
+    }else{
+      sosBanner.style.display='none';
+    }
+  }
+
+  // Update location buttons colors only
+  const btnEl=document.getElementById('locBtns');
+  if(btnEl&&currentTab==='overview'){
+    btnEl.innerHTML=locations.map(l=>{
+      const hasActive=activeShifts.some(s=>s.location_name===l.name);
+      const isSel=selLoc===l.name;
+      const hb2=heartbeats.find(h=>h.location_name===l.name);
+      const online=hb2&&(Date.now()-new Date(hb2.last_seen))<5*60*1000;
+      const hasSOS=sosAlerts.some(s=>s.location_name===l.name&&!s.resolved);
+      const icon=hasSOS?'🆘':hasActive?'🟢':online?'🔵':'⚫';
+      const sosStyle=hasSOS?'animation:sosBtnFlash 1s ease-in-out infinite;border-color:var(--r)!important;color:var(--r)!important;background:rgba(255,23,68,0.15)!important;':'';
+      return `<button class="loc-btn ${hasActive?'has':''} ${isSel?'active':''}" style="${sosStyle}" onclick="selectLoc('${esc(l.name)}')">${icon} ${esc(l.name)}</button>`;
+    }).join('');
+  }
+
+  // Refresh incidents if on overview tab
+  if(currentTab==='overview') renderIncidents();
+}
+
+// ── LOAD ALL DATA FROM SUPABASE ──────────────────────
+async function load(){
+  const savedTab = currentTab; // Remember current tab before loading
+  const [g,l,sh,sc,sos,hb]=await Promise.all([
+    get('guards','order=full_name.asc&active=eq.true'),
+    get('locations','order=name.asc'),
+    get('shifts','order=start_time.desc&limit=50'),
+    get('patrol_scans','order=scanned_at.desc&limit=200'),
+    get('sos_alerts','resolved=eq.false&order=created_at.desc&select=*'),
+    get('device_heartbeat','order=last_seen.desc')
+  ]);
+  if(Array.isArray(g))guards=g;
+  if(Array.isArray(l))locations=l;
+  if(Array.isArray(sh))shifts=sh;
+  if(Array.isArray(sc))scans=sc;
+  if(Array.isArray(sos))sosAlerts=sos;
+  if(Array.isArray(hb))heartbeats=hb;
+  // Restore tab in case something changed it
+  currentTab = savedTab;
+  // Only render current tab - never switch tabs
+  if(currentTab==='overview') renderOverview();
+  else if(currentTab==='guards') renderGuards();
+  // (scans tab δεν χρησιμοποιείται)
+  // Make sure correct panel is visible
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  const activePanel=document.getElementById('panel-'+currentTab);
+  if(activePanel)activePanel.classList.add('on');
+  const ts=['overview','guards','locations','payroll','settings'];
+  const tabIdx=ts.indexOf(currentTab);
+  if(tabIdx>=0)document.querySelectorAll('.tab')[tabIdx]?.classList.add('on');
+}
+
+// ── OVERVIEW ─────────────────────────────────────────
+function renderOverview(){
+  const today=new Date().toISOString().split('T')[0];
+  const activeShifts=shifts.filter(s=>s.status==='active');
+  const todayScans=scans.filter(s=>s.scanned_at&&s.scanned_at.startsWith(today));
+
+  document.getElementById('stOn').textContent=activeShifts.length;
+  document.getElementById('stAll').textContent=guards.length;
+  document.getElementById('stScans').textContent=todayScans.length;
+  document.getElementById('stSOS').textContent=sosAlerts.length;
+
+  // SOS
+  if(sosAlerts.length){
+    document.getElementById('sosBanner').style.display='block';
+    document.getElementById('sosText').textContent=`${sosAlerts.length} ενεργή ειδοποίηση SOS!`;
+  }else{
+    document.getElementById('sosBanner').style.display='none';
+  }
+
+  // Location buttons
+  const btnEl=document.getElementById('locBtns');
+  if(!locations.length){
+    btnEl.innerHTML='<div style="font-size:12px;color:var(--mu)">Δεν υπάρχουν χώροι φύλαξης ακόμη — προσθέστε από το tab 📍</div>';
+  }else{
+    btnEl.innerHTML=locations.map(l=>{
+      const hasActive=activeShifts.some(s=>s.location_name===l.name);
+      const isSel=selLoc===l.name;
+      const hb=heartbeats.find(h=>h.location_name===l.name);
+      const online=hb&&(Date.now()-new Date(hb.last_seen))<5*60*1000;
+      const hasSOS=sosAlerts.some(s=>s.location_name===l.name&&!s.resolved);
+      const icon=hasSOS?'🆘':hasActive?'🟢':online?'🔵':'⚫';
+      const sosStyle=hasSOS?'animation:sosBtnFlash 1s ease-in-out infinite;border-color:var(--r)!important;color:var(--r)!important;background:rgba(255,23,68,0.15)!important;':'';
+      return `<button class="loc-btn ${hasActive?'has':''} ${isSel?'active':''} ${hasSOS?'sos-loc':''}" style="${sosStyle}" onclick="selectLoc('${esc(l.name)}')">${icon} ${esc(l.name)}</button>`;
+    }).join('');
+  }
+
+  renderLocDetail();
+  renderShiftHistory();
+  renderRecentScans();
+  renderIncidents();
+}
+
+function selectLoc(name){
+  selLoc=selLoc===name?null:name;
+  renderOverview();
+}
+
+function renderLocDetail(){
+  const el=document.getElementById('locDetail');
+  if(!selLoc){el.innerHTML='';return;}
+
+  const activeShifts=shifts.filter(s=>s.status==='active'&&s.location_name===selLoc);
+  const hb = heartbeats.find(h=>h.location_name===selLoc);
+  const isOnline = hb && (Date.now()-new Date(hb.last_seen))<5*60*1000;
+  const locSOS=sosAlerts.filter(s=>s.location_name===selLoc&&!s.resolved);
+
+  // Mark SOS as seen
+  if(locSOS.length){
+    locSOS.forEach(async s=>{
+      if(!s.seen_at){
+        await patch('sos_alerts',`id=eq.${s.id}`,{seen_at:new Date().toISOString()});
+        s.seen_at=new Date().toISOString();
+      }
+    });
+  }
+
+  let html='';
+
+  // SOS (συμπαγές)
+  if(locSOS.length){
+    html+=`<div style="background:rgba(255,23,68,0.12);border:2px solid var(--r);border-radius:12px;padding:12px;margin-bottom:10px;animation:sosBtnFlash 1s ease-in-out infinite">
+      <div style="font-size:14px;font-weight:900;color:var(--r);letter-spacing:1px;margin-bottom:6px">🆘 ΕΝΕΡΓΟ SOS — ${esc(selLoc)}</div>
+      ${locSOS.map(s=>{const g=guards.find(x=>x.full_name===s.guard_name);return `<div style="font-size:13px;color:var(--tx);margin-bottom:4px">👮 ${esc(s.guard_name||'—')} ${s.lat?`· <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:var(--ac)">🗺️</a>`:''} ${g&&g.phone?`· <a href="tel:${g.phone}" style="color:var(--r);font-weight:700">📞</a>`:''}</div>`;}).join('')}
+      <button onclick="resolveSOSForLoc('${esc(selLoc)}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-family:'Exo 2',sans-serif;font-size:11px;font-weight:700;cursor:pointer;margin-top:4px">✓ ΕΠΙΛΥΘΗΚΕ</button>
+    </div>`;
+  }
+
+  // Συμπαγής γραμμή χώρου
+  let statusText, statusColor, guardLine='';
+  if(activeShifts.length){
+    const s=activeShifts[0];
+    const guard=guards.find(g=>g.full_name===s.guard_name)||{};
+    const start=new Date(s.start_time);
+    const d=Math.floor((Date.now()-start)/1000);
+    const h=String(Math.floor(d/3600)).padStart(2,'0');
+    const m=String(Math.floor((d%3600)/60)).padStart(2,'0');
+    statusText='🟢 ΣΕ ΒΑΡΔΙΑ'; statusColor='var(--g)';
+    guardLine=`<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:10px;background:var(--s2);border-radius:10px">
+      <div><div style="font-weight:700;font-size:14px">👮 ${esc(s.guard_name)}</div>
+      <div style="font-size:11px;color:var(--mu);font-family:'Share Tech Mono',monospace">από ${start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})} · ${h}:${m} ⏱</div></div>
+      ${guard.phone?`<a href="tel:${guard.phone}" style="padding:8px 12px;border-radius:20px;background:var(--g);color:#fff;font-size:12px;font-weight:700;text-decoration:none">📞</a>`:''}
+    </div>`;
+  } else {
+    statusText='⚪ Καμία ενεργή βάρδια'; statusColor='var(--mu)';
+  }
+
+  html+=`<div class="card" style="padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:13px;font-weight:900;color:${statusColor};letter-spacing:1px">📍 ${esc(selLoc)}</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:'Share Tech Mono',monospace;color:${isOnline?'var(--g)':'var(--mu)'}">
+        <div style="width:6px;height:6px;border-radius:50%;background:${isOnline?'var(--g)':'var(--mu)'}"></div>${isOnline?'ONLINE':'OFFLINE'}
+      </div>
+    </div>
+    <div style="font-size:12px;color:${statusColor};margin-top:4px">${statusText}</div>
+    ${guardLine}
+  </div>`;
+
+  el.innerHTML=html;
+}
+
+function renderShiftHistory(){
+  const el=document.getElementById('shiftHistory');
+  const recent=shifts.slice(0,15);
+  if(!recent.length){el.innerHTML='<div class="empty">Κανένα ιστορικό ακόμη</div>';return;}
+  el.innerHTML=recent.map(s=>{
+    const start=new Date(s.start_time);
+    const end=s.end_time?new Date(s.end_time):null;
+    const active=s.status==='active';
+    let dur='—';
+    if(end){const d=Math.floor((end-start)/1000);dur=`${String(Math.floor(d/3600)).padStart(2,'0')}:${String(Math.floor((d%3600)/60)).padStart(2,'0')}`;}
+    else if(active){const d=Math.floor((Date.now()-start)/1000);dur=`${String(Math.floor(d/3600)).padStart(2,'0')}:${String(Math.floor((d%3600)/60)).padStart(2,'0')} ▶`;}
+    return `<div class="card ${active?'green':''}" style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div><div style="font-weight:700;font-size:14px">${esc(s.guard_name||'—')}</div>
+        <div style="font-size:11px;color:var(--mu)">📍 ${esc(s.location_name||'—')}</div></div>
+        <span class="badge ${active?'on':'off'}">${active?'ΤΡΕΧΟΥΣΑ':'ΤΕΛΕΙΩΣΕ'}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px">Έναρξη</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:3px">${start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div style="font-size:9px;color:var(--mu)">${start.toLocaleDateString('el-GR')}</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px">Λήξη</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:3px;color:${active?'var(--y)':'var(--tx)'}">${end?end.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}):active?'—':'—'}</div>
+          <div style="font-size:9px;color:var(--mu)">${end?end.toLocaleDateString('el-GR'):''}</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:1px">Διάρκεια</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:3px;color:var(--y)">${dur}</div>
+        </div>
+      </div>
+      ${renderChecklistHtml(s.notes, s.handover_from)}
+    </div>`;
+  }).join('');
+}
+
+function renderGroupedScans(){
+  const el=document.getElementById('groupedScans');
+  if(!el)return;
+
+  const filter=document.getElementById('scanDateFilter')?.value||'today';
+  const today=new Date().toISOString().split('T')[0];
+  const yesterday=new Date(Date.now()-86400000).toISOString().split('T')[0];
+
+  let filtered=scans;
+  if(filter==='today') filtered=scans.filter(s=>s.scanned_at&&s.scanned_at.startsWith(today));
+  else if(filter==='yesterday') filtered=scans.filter(s=>s.scanned_at&&s.scanned_at.startsWith(yesterday));
+
+  if(!filtered.length){
+    el.innerHTML='<div class="empty">Κανένα σκαν για αυτή την περίοδο</div>';
+    return;
+  }
+
+  // Ομαδοποίηση ανά τοποθεσία → φύλακα
+  const byLoc={};
+  filtered.forEach(s=>{
+    const loc=s.location_name||'Άγνωστη Τοποθεσία';
+    const guard=s.guard_name||'Άγνωστος';
+    if(!byLoc[loc])byLoc[loc]={};
+    if(!byLoc[loc][guard])byLoc[loc][guard]=[];
+    byLoc[loc][guard].push(s);
+  });
+
+  // Χρώματα ανά τοποθεσία
+  const locColors=['#1a6ef5','#00c97a','#e8b400','#b388ff','#ff6b35','#00d4ff'];
+  const locList=Object.keys(byLoc);
+
+  el.innerHTML=locList.map((loc,li)=>{
+    const color=locColors[li%locColors.length];
+    const guardList=byLoc[loc];
+    const guardNames=Object.keys(guardList);
+    const totalScans=guardNames.reduce((sum,g)=>sum+guardList[g].length,0);
+
+    const guardsHTML=guardNames.map(guardName=>{
+      const gScans=guardList[guardName];
+      const scansHTML=gScans.map(s=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg);border-radius:8px;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <div style="font-size:13px;font-weight:600">${esc(s.nfc_tag||'—')}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:${color}">${s.scanned_at?new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—'}</div>
+            ${s.lat?`<a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:4px 10px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);border-radius:20px;font-size:11px;color:var(--ac);text-decoration:none;font-weight:700">🗺️ Άνοιξε χάρτη</a>`:''}
+          </div>
+        </div>`).join('');
+
+      return `
+        <div style="margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--ac),#0d4db5);display:flex;align-items:center;justify-content:center;font-size:15px">👮</div>
+              <div>
+                <div style="font-size:14px;font-weight:700">${esc(guardName)}</div>
+                <div style="font-size:10px;color:var(--mu)">${gScans.length} σκαν</div>
+              </div>
+            </div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mu)">
+              ${gScans[gScans.length-1]?new Date(gScans[gScans.length-1].scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}):'—'}
+              → ${gScans[0]?new Date(gScans[0].scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}):'—'}
+            </div>
+          </div>
+          ${scansHTML}
+        </div>`;
+    }).join('');
+
+    return `
+      <div style="background:var(--s);border:1px solid var(--br);border-radius:14px;margin-bottom:12px;overflow:hidden;border-top:3px solid ${color}">
+        <div style="padding:14px 14px 10px;display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${color}"></div>
+            <div style="font-size:15px;font-weight:900;color:${color}">${esc(loc)}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.06);border:1px solid var(--br);color:var(--mu)">${totalScans} σκαν</span>
+            <span style="font-size:10px;color:var(--mu)">${guardNames.length} φύλακες</span>
+          </div>
+        </div>
+        <div style="padding:0 14px 14px">
+          ${guardsHTML}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function resolveSOSForLoc(loc){
+  const locSOS=sosAlerts.filter(s=>s.location_name===loc&&!s.resolved);
+  for(const s of locSOS){
+    await patch('sos_alerts',`id=eq.${s.id}`,{resolved:true});
+  }
+  // Αμέσως καθαρίζουμε τοπικά χωρίς να περιμένουμε ανανέωση
+  sosAlerts=sosAlerts.filter(s=>s.location_name!==loc||s.resolved);
+  // Ανανέωση UI αμέσως χωρίς tab switch
+  if(currentTab==='overview') renderOverview();
+  toast('SOS επιλύθηκε ✓','ok');
+}
+
+function renderRecentScans(){
+  renderGroupedScans();
+}
+
+// ── GUARDS ───────────────────────────────────────────
+function renderGuards(){
+  const el=document.getElementById('guardsList');
+  const sf=document.getElementById('scanFilter');
+  if(sf) sf.innerHTML='<option value="all">Όλοι</option>'+guards.map(g=>`<option value="${esc(g.full_name)}">${esc(g.full_name)}</option>`).join('');
+
+  if(!guards.length){el.innerHTML='<div class="empty">Δεν υπάρχουν φύλακες ακόμη</div>';return;}
+  const activeShifts=shifts.filter(s=>s.status==='active');
+  el.innerHTML=guards.map(g=>{
+    const onDuty=activeShifts.some(s=>s.guard_name===g.full_name);
+    const shift=activeShifts.find(s=>s.guard_name===g.full_name);
+    return `<div class="card ${onDuty?'green':''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--ac),#0d4db5);display:flex;align-items:center;justify-content:center;font-size:20px">👮</div>
+          <div><div style="font-size:15px;font-weight:700">${esc(g.full_name)}</div>
+          <div style="font-size:10px;color:var(--ac);text-transform:uppercase;letter-spacing:1px">${esc(g.role||'Φύλακας')}</div></div>
+        </div>
+        <span class="badge ${onDuty?'on':'off'}">${onDuty?'ΣΕ ΒΑΡΔΙΑ':'ΕΚΤΟΣ'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--mu);line-height:2">
+        📞 <strong style="color:var(--tx)">${esc(g.phone||'—')}</strong><br>
+        📍 <strong style="color:var(--tx)">${esc(g.location_name||'—')}</strong>
+        ${onDuty&&shift?`<br>⏰ Βάρδια από: <strong style="color:var(--y)">${new Date(shift.start_time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</strong>`:''}
+      </div>
+      <div class="rate-tag">💶 ${g.hourly_rate||'—'}€ / ώρα</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        ${g.phone?`<a class="btn-call" href="tel:${g.phone}" style="text-decoration:none;flex:1">📞 Κλήση</a>`:'<div style="flex:1"></div>'}
+        <button onclick="editGuard('${g.id}')" style="padding:8px 14px;border-radius:10px;background:rgba(26,110,245,0.1);border:1px solid rgba(26,110,245,0.3);color:var(--ac);font-size:12px;font-weight:700;cursor:pointer">✏️ Επεξεργασία</button>
+        <button class="btn-del" onclick="delGuard('${g.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let editingGuardId = null;
+
+function editGuard(id){
+  const g = guards.find(x=>x.id===id);
+  if(!g) return;
+  editingGuardId = id;
+
+  // Fill modal fields
+  document.getElementById('gN').value = g.full_name||'';
+  document.getElementById('gP').value = g.phone||'';
+  document.getElementById('gR').value = g.role||'Φύλακας';
+  document.getElementById('gW').value = g.hourly_rate||'';
+  document.getElementById('gNote').value = g.notes||'';
+  document.getElementById('gPin').value = '';
+
+  // Update location dropdown
+  const sel = document.getElementById('gL');
+  sel.innerHTML='<option value="">— Επιλέξτε —</option>'+locations.map(l=>`<option value="${esc(l.name)}">${esc(l.name)}</option>`).join('');
+  sel.value = g.location_name||'';
+
+  // Change modal title and button
+  document.querySelector('#mGuard .modal-title').textContent = '✏️ ΕΠΕΞΕΡΓΑΣΙΑ ΦΥΛΑΚΑ';
+  document.querySelector('#mGuard .btn-save').textContent = '✓ Ενημέρωση';
+
+  document.getElementById('mGuard').classList.add('on');
+}
+
+function openModal(id){
+  if(id==='mGuard'){
+    editingGuardId = null;
+    const sel=document.getElementById('gL');
+    sel.innerHTML='<option value="">— Επιλέξτε —</option>'+locations.map(l=>`<option value="${esc(l.name)}">${esc(l.name)}</option>`).join('');
+    document.querySelector('#mGuard .modal-title').textContent = '👮 ΝΕΟΣ ΦΥΛΑΚΑΣ';
+    document.querySelector('#mGuard .btn-save').textContent = '✓ Αποθήκευση';
+    ['gN','gP','gW','gNote','gPin'].forEach(i=>document.getElementById(i).value='');
+  }
+  document.getElementById(id).classList.add('on');
+}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+
+async function saveGuard(){
+  const name=document.getElementById('gN').value.trim();
+  const phone=document.getElementById('gP').value.trim();
+  const loc=document.getElementById('gL').value;
+  const rate=parseFloat(document.getElementById('gW').value);
+  if(!name||!phone||!loc||isNaN(rate)){toast('Συμπληρώστε: Όνομα, Τηλέφωνο, Χώρο, €/ώρα','err');return;}
+
+  const pinVal = document.getElementById('gPin').value.trim();
+  const data = {full_name:name,phone,role:document.getElementById('gR').value,location_name:loc,hourly_rate:rate,notes:document.getElementById('gNote').value.trim(),active:true};
+  if(pinVal) data.pin_code = pinVal;
+
+  let res;
+  if(editingGuardId){
+    // Update existing guard using patch helper
+    await patch('guards', `id=eq.${editingGuardId}`, data);
+    editingGuardId = null;
+    closeModal('mGuard');
+    ['gN','gP','gW','gNote','gPin'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('gL').value='';
+    await load();
+    toast('Φύλακας ενημερώθηκε ✓','ok');
+    return;
+  } else {
+    res=await post('guards',{...data,pin_code:pinVal||null});
+  }
+  if(res&&res[0]){
+    closeModal('mGuard');
+    ['gN','gP','gW','gNote','gPin'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('gL').value='';
+    await load();
+    toast('Φύλακας αποθηκεύτηκε ✓','ok');
+  }else{toast('Σφάλμα αποθήκευσης','err');}
+}
+
+async function delGuard(id){
+  const guard=guards.find(g=>g.id===id);
+  if(!guard) return;
+  const name=guard.full_name;
+  if(!confirm('Diagrafi '+name+' kai ola ta dedomena toy;')) return;
+  const enc=encodeURIComponent(name);
+  await Promise.all([
+    sb('DELETE','shifts','guard_name=eq.'+enc),
+    sb('DELETE','patrol_scans','guard_name=eq.'+enc),
+    sb('DELETE','patrols','guard_name=eq.'+enc),
+    sb('DELETE','incidents','guard_name=eq.'+enc),
+    sb('DELETE','sos_alerts','guard_name=eq.'+enc)
+  ]);
+  await patch('guards','id=eq.'+id,{active:false});
+  await load();
+  toast('Diagrafi OK','ok');
+}
+
+// ── LOCATIONS ────────────────────────────────────────
+function renderLocations(){
+  const el=document.getElementById('locList');
+  if(!locations.length){el.innerHTML='<div class="empty">Δεν υπάρχουν χώροι ακόμη</div>';return;}
+  el.innerHTML=locations.map(l=>{
+    const locGuards=guards.filter(g=>g.location_name===l.name);
+    const active=shifts.filter(s=>s.status==='active'&&s.location_name===l.name);
+    return `<div class="card ${active.length?'green':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-size:16px;font-weight:700">📍 ${esc(l.name)}</div>
+        ${l.address?`<div style="font-size:11px;color:var(--mu)">${esc(l.address)}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);color:var(--ac)">${locGuards.length} φύλακες</span>
+          <button class="btn-del" onclick="delLoc('${l.id}')">🗑</button>
+        </div>
+      </div>
+      ${active.length?`<div style="font-size:12px;color:var(--g);margin-top:6px">🟢 ${active.map(s=>esc(s.guard_name)).join(', ')} σε βάρδια τώρα</div>`:''}
+      ${locGuards.length&&!active.length?`<div style="font-size:11px;color:var(--mu);margin-top:6px">${locGuards.map(g=>esc(g.full_name)).join(' · ')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function saveLoc(){
+  const name=document.getElementById('lN').value.trim();
+  if(!name){toast('Εισάγετε όνομα','err');return;}
+  const res=await post('locations',{name,address:document.getElementById('lA').value.trim()});
+  if(res&&res[0]){
+    closeModal('mLoc');
+    ['lN','lA'].forEach(i=>document.getElementById(i).value='');
+    await load();
+    toast('Χώρος αποθηκεύτηκε ✓','ok');
+  }else{toast('Σφάλμα αποθήκευσης','err');}
+}
+
+async function delLoc(id){
+  if(!confirm('Διαγραφή χώρου;'))return;
+  await sb('DELETE','locations',`id=eq.${id}`);
+  await load();
+  toast('Διαγράφηκε');
+}
+
+// ── PAYROLL ──────────────────────────────────────────
+function initPayrollGuardSelect(){
+  const sel=document.getElementById('payGuardSel');
+  if(!sel||!guards.length)return; // μόνο αν υπάρχει το element ΚΑΙ έχουν φορτωθεί φύλακες
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Επιλέξτε Φύλακα —</option>';
+  guards.forEach(g=>{
+    sel.innerHTML+=`<option value="${esc(g.full_name)}">${esc(g.full_name)} — 📍${esc(g.location_name||'—')} — 💶${g.hourly_rate||'—'}€/ω</option>`;
+  });
+  if(cur)sel.value=cur;
+}
+
+async function loadGuardPayroll(){
+  const guardName=document.getElementById('payGuardSel').value;
+  const el=document.getElementById('payDetail');
+  if(!guardName){el.innerHTML='';return;}
+
+  const guard=guards.find(g=>g.full_name===guardName);
+  if(!guard){el.innerHTML='';return;}
+
+  el.innerHTML=`<div style="text-align:center;padding:20px;color:var(--mu)">Φόρτωση...</div>`;
+
+  // Load unpaid completed shifts for this guard
+  const unpaidShifts=await get('shifts',
+    `guard_name=eq.${encodeURIComponent(guardName)}&status=eq.done&paid=eq.false&order=start_time.desc`
+  );
+
+  if(!Array.isArray(unpaidShifts)||!unpaidShifts.length){
+    el.innerHTML=`
+      <div class="card" style="text-align:center;padding:30px">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <div style="font-size:16px;font-weight:700;color:var(--g);margin-bottom:6px">${esc(guardName)}</div>
+        <div style="font-size:13px;color:var(--mu)">Δεν υπάρχουν απλήρωτες βάρδιες!</div>
+      </div>`;
+    return;
+  }
+
+  let totalH=0, totalPay=0;
+  const rows=unpaidShifts.map(s=>{
+    const start=new Date(s.start_time);
+    const end=new Date(s.end_time);
+    const hrs=Math.floor((end-start)/3600000); // ακέραιες ώρες μόνο
+    const pay=hrs*(guard.hourly_rate||0);
+    totalH+=hrs; totalPay+=pay;
+    const h=start.getHours();
+    const period=h>=6&&h<14?{l:'Πρωί',c:'var(--y)'}:h>=14&&h<22?{l:'Απόγευμα',c:'var(--ac)'}:{l:'Νύχτα',c:'#b388ff'};
+    const dur=`${String(Math.floor((end-start)/3600000)).padStart(2,'0')}:${String(Math.floor(((end-start)%3600000)/60000)).padStart(2,'0')}`;
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:6px;border:1px solid var(--br)">
+        <div>
+          <div style="font-size:13px;font-weight:700">${start.toLocaleDateString('el-GR',{weekday:'long',day:'numeric',month:'long'})}</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:3px">
+            🕐 ${start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})} — ${end.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}
+            <span style="color:${period.c};font-size:9px;font-weight:700;margin-left:6px;padding:2px 6px;background:rgba(255,255,255,0.06);border-radius:8px">${period.l}</span>
+          </div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">📍 ${esc(s.location_name||'—')} · ⌛ ${dur}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--ac)">${hrs}ω</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:16px;color:var(--y);font-weight:700">${pay}€</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // totalH and totalPay are already integers
+
+  el.innerHTML=`
+    <!-- Guard summary -->
+    <div class="card" style="border-top:3px solid var(--y);margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:18px;font-weight:900">👮 ${esc(guardName)}</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:4px">📍 ${esc(guard.location_name||'—')} · 💶 ${guard.hourly_rate||'—'}€/ώρα</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:28px;color:var(--y);font-weight:900">${totalPay}€</div>
+          <div style="font-size:11px;color:var(--mu)">${totalH}ω · ${unpaidShifts.length} βάρδιες</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shifts list -->
+    <div style="margin-bottom:12px">${rows}</div>
+
+    <!-- Pay button -->
+    <button onclick="markAsPaid('${esc(guardName)}')" style="width:100%;padding:18px;border-radius:14px;background:linear-gradient(135deg,rgba(0,230,118,0.2),rgba(0,230,118,0.05));border:2px solid var(--g);color:var(--g);font-family:'Exo 2',sans-serif;font-size:16px;font-weight:900;letter-spacing:3px;cursor:pointer;text-transform:uppercase">
+      ✓ ΠΛΗΡΩΘΗΚΕ — ${totalPay}€
+    </button>`;
+}
+
+async function markAsPaid(guardName){
+  const guard=guards.find(g=>g.full_name===guardName);
+  if(!guard)return;
+
+  // Calculate total for confirmation
+  const unpaid=await get('shifts',`guard_name=eq.${encodeURIComponent(guardName)}&status=eq.done&paid=eq.false`);
+  if(!Array.isArray(unpaid)||!unpaid.length)return;
+
+  let total=0;
+  unpaid.forEach(s=>{
+    const hrs=Math.floor((new Date(s.end_time)-new Date(s.start_time))/3600000); // ακέραιες ώρες
+    total+=hrs*(guard.hourly_rate||0);
+  });
+
+  if(!confirm(`Επιβεβαίωση πληρωμής;
+
+👮 ${guardName}
+💶 ${total}€
+📋 ${unpaid.length} βάρδιες
+
+Μετά την επιβεβαίωση θα αφαιρεθούν από το ιστορικό.`))return;
+
+  // Mark all as paid
+  const now=new Date().toISOString();
+  for(const s of unpaid){
+    await patch('shifts',`id=eq.${s.id}`,{paid:true, paid_at:now});
+  }
+
+  toast(`✓ ${guardName} — ${total}€ πληρώθηκε!`,'ok');
+  await load();
+  loadGuardPayroll();
+}
+
+// ── SCANS ────────────────────────────────────────────
+function renderScans(){
+  const f=document.getElementById('scanFilter').value;
+  const shown=f==='all'?scans:scans.filter(s=>s.guard_name===f);
+  document.getElementById('scanBadge').textContent=shown.length;
+  const el=document.getElementById('scansList');
+  if(!shown.length){el.innerHTML='<div class="empty">Κανένα σκαν</div>';return;}
+  el.innerHTML=shown.slice(0,150).map(s=>`
+    <div style="background:var(--s);border:1px solid var(--br);border-radius:10px;padding:11px 13px;margin-bottom:7px;border-left:3px solid var(--ac)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div style="font-weight:700;font-size:13px">${esc(s.nfc_tag||'—')}</div>
+        <div style="font-size:10px;color:var(--mu);margin-top:2px">👤 ${esc(s.guard_name||'—')} · 📍 ${esc(s.location_name||'—')}</div></div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--ac)">${s.scanned_at?new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—'}</div>
+          <div style="font-size:10px;color:var(--mu)">${s.scanned_at?new Date(s.scanned_at).toLocaleDateString('el-GR'):'—'}</div>
+        </div>
+      </div>
+      ${s.lat?`<a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:4px 10px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);border-radius:20px;font-size:11px;color:var(--ac);text-decoration:none;font-weight:700">🗺️ Άνοιξε χάρτη</a>`:''}
+    </div>`).join('');
+}
+
+// ── SETTINGS ─────────────────────────────────────────
+// ── SOS CONTACTS ──
+function renderSOSContacts(){
+  const el=document.getElementById('sosContactsList');
+  if(!el)return;
+  const contacts=JSON.parse(localStorage.getItem('snts_sos_contacts')||'[]');
+  if(!contacts.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--mu);text-align:center;padding:10px">Δεν υπάρχουν τηλέφωνα SOS ακόμη</div>';
+    return;
+  }
+  el.innerHTML=contacts.map((c,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--s2);border-radius:10px;margin-bottom:7px;border:1px solid var(--br)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">📞</span>
+        <div>
+          <div style="font-size:14px;font-weight:700">${esc(c.name)}</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--ac)">${esc(c.phone)}</div>
+        </div>
+      </div>
+      <button onclick="removeSOSContact(${i})" style="width:32px;height:32px;border-radius:8px;background:rgba(232,51,74,0.08);border:1px solid rgba(232,51,74,0.3);color:var(--r);font-size:14px;cursor:pointer">🗑</button>
+    </div>`).join('');
+}
+
+function addSOSContact(){
+  const name=document.getElementById('sosName').value.trim();
+  const phone=document.getElementById('sosPhone').value.trim();
+  if(!name||!phone){toast('Εισάγετε όνομα και τηλέφωνο','err');return;}
+  const contacts=JSON.parse(localStorage.getItem('snts_sos_contacts')||'[]');
+  contacts.push({name,phone});
+  localStorage.setItem('snts_sos_contacts',JSON.stringify(contacts));
+  // Sync to guard devices via Supabase settings
+  syncSOSContacts(contacts);
+  document.getElementById('sosName').value='';
+  document.getElementById('sosPhone').value='';
+  renderSOSContacts();
+  toast('Τηλέφωνο SOS προστέθηκε ✓','ok');
+}
+
+function removeSOSContact(i){
+  const contacts=JSON.parse(localStorage.getItem('snts_sos_contacts')||'[]');
+  contacts.splice(i,1);
+  localStorage.setItem('snts_sos_contacts',JSON.stringify(contacts));
+  syncSOSContacts(contacts);
+  renderSOSContacts();
+  toast('Διαγράφηκε');
+}
+
+async function syncSOSContacts(contacts){
+  // Save to Supabase - first delete existing, then insert
+  try{
+    // Delete old
+    await fetch(`${SB}/rest/v1/device_heartbeat?location_name=eq.__sos_config__`,{
+      method:'DELETE',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY}
+    });
+    // Insert new
+    await fetch(`${SB}/rest/v1/device_heartbeat`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify({location_name:'__sos_config__',last_seen:new Date().toISOString(),notes:JSON.stringify(contacts)})
+    });
+    console.log('SOS contacts synced:', contacts.length, 'contacts');
+  }catch(e){console.error('SOS sync error:',e);}
+}
+
+function saveSettings(){
+  const p=document.getElementById('newPass').value.trim();
+  if(p){
+    toast('Ο κωδικός αλλάζει μόνο από τη Supabase (ασφάλεια)','err');
+    document.getElementById('newPass').value='';
+    return;
+  }
+  localStorage.setItem('snts_sos',document.getElementById('sosPhone').value.trim());
+  toast('Αποθηκεύτηκε ✓','ok');
+}
+
+// ── EXPORT ───────────────────────────────────────────
+async function renderIncidents(){
+  const el=document.getElementById('incidentsList');
+  if(!el)return;
+
+  // Update guard filter dropdown
+  const gf=document.getElementById('incFilterGuard');
+  if(gf && gf.options.length<=1){
+    guards.forEach(g=>{
+      const o=document.createElement('option');
+      o.value=g.full_name; o.textContent=g.full_name;
+      gf.appendChild(o);
+    });
+  }
+
+  const filterGuard = document.getElementById('incFilterGuard')?.value||'all';
+  const filterSeen = document.getElementById('incFilterSeen')?.value||'all';
+
+  let query='order=created_at.desc&limit=50';
+  if(filterSeen==='unseen') query+='&seen_by_manager=eq.false';
+  if(filterSeen==='seen') query+='&seen_by_manager=eq.true';
+  if(filterGuard!=='all') query+=`&guard_name=eq.${encodeURIComponent(filterGuard)}`;
+
+  const incidents=await get('incidents',query);
+  if(!Array.isArray(incidents)||!incidents.length){
+    el.innerHTML='<div style="text-align:center;padding:14px;color:var(--mu);font-size:12px">Δεν υπάρχουν αναφορές</div>';
+    return;
+  }
+  el.innerHTML=incidents.map(inc=>{
+    const dt=new Date(inc.created_at);
+    const seen=inc.seen_by_manager;
+    return `<div class="card" style="border-left:3px solid ${seen?'var(--g)':'var(--y)'};margin-bottom:10px;opacity:${seen?0.7:1}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:700">⚠️ ${esc(inc.guard_name||'—')}</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">📍 ${esc(inc.location_name||'—')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span style="font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;${seen?'background:rgba(0,201,122,0.15);color:var(--g);border:1px solid var(--g)':'background:rgba(232,180,0,0.15);color:var(--y);border:1px solid var(--y)'}">${seen?'✅ ΔΙΑΒΑΣΤΗΚΕ':'🔴 ΑΔΙΑΒΑΣΤΟ'}</span>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mu)">${dt.toLocaleDateString('el-GR')} ${dt.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--tx);line-height:1.6;padding:10px;background:var(--s2);border-radius:8px;margin-bottom:8px">${esc(inc.description||'—')}</div>
+      ${inc.photo_url?`<a href="${inc.photo_url}" target="_blank"><img src="${inc.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px"></a>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${inc.lat?`<a href="https://maps.google.com/?q=${inc.lat},${inc.lng}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);border-radius:20px;font-size:11px;color:var(--ac);text-decoration:none;font-weight:700">🗺️ Χάρτης</a>`:''}
+        ${!seen?`<button onclick="markIncidentSeen('${inc.id}')" style="padding:5px 12px;border-radius:20px;background:rgba(0,201,122,0.15);border:1px solid var(--g);color:var(--g);font-size:11px;font-weight:700;cursor:pointer;font-family:'Exo 2',sans-serif">✅ Επισήμανση ως Διαβασμένο</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function markIncidentSeen(id){
+  await patch('incidents',`id=eq.${id}`,{seen_by_manager:true});
+  renderIncidents();
+  toast('Επισημάνθηκε ως διαβασμένο ✓','ok');
+}
+
+// ── PATROL MAP & FUNCTIONS ──────────────────────────
+
+let userFocusedPoint = false; // true όταν ο χρήστης πάτησε σημείο - σταματά το auto-zoom
+let userFocusTime = 0;
+let patrolMap = null;
+
+function initPatrolMap(){
+  const el = document.getElementById('patrolMapEl');
+  if(!el) return;
+  if(patrolMap){ 
+    setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 200);
+    return; 
+  }
+  // Check if Leaflet loaded
+  if(typeof L === 'undefined'){
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#566;flex-direction:column;gap:8px"><div style="font-size:30px">🗺️</div><div>Απαιτείται σύνδεση internet για τον χάρτη</div></div>';
+    return;
+  }
+  try {
+    patrolMap = L.map('patrolMapEl', {
+      center: [37.98, 23.73],
+      zoom: 15,
+      zoomControl: true,
+      attributionControl: true
+    });
+
+    // Χάρτης δρόμων (OpenStreetMap)
+    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      subdomains: ['a','b','c'],
+      attribution: '© OpenStreetMap'
+    });
+
+    // Δορυφορικός χάρτης (Esri) - πολύ λεπτομερής
+    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '© Esri'
+    });
+
+    // Ονόματα δρόμων πάνω στον δορυφορικό
+    const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      subdomains: ['a','b','c','d']
+    });
+
+    const satWithLabels = L.layerGroup([satLayer, labelsLayer]);
+
+    // Προεπιλογή: δορυφορικός με ονόματα
+    satWithLabels.addTo(patrolMap);
+
+    // Κουμπί εναλλαγής χάρτη
+    L.control.layers({
+      '🛰️ Δορυφόρος': satWithLabels,
+      '🗺️ Χάρτης': streetLayer
+    }, null, {position:'topright', collapsed:false}).addTo(patrolMap);
+
+    setTimeout(()=>{ try{ patrolMap.invalidateSize(); }catch(e){} }, 400);
+  } catch(e) {
+    console.error('Map init error:', e);
+  }
+}
+
+// Update live marker on map every 5 sec
+let lastPointCount = 0;
+async function updateLiveMarker(){
+  if(currentTab!=='overview' || !patrolMap) return;
+  const data = await get('patrols','status=eq.active&order=start_time.desc&limit=1');
+  if(!Array.isArray(data)||!data.length){
+    // Καμία ενεργή περιπολία - καθάρισε τον live marker
+    lastPointCount = 0;
+    return;
+  }
+  const active = data[0];
+  const pts = parsePatrolPoints(active.points);
+  if(!pts.length) return;
+
+  // Only update if new points added
+  if(pts.length === lastPointCount) return;
+  lastPointCount = pts.length;
+
+  const last = pts[pts.length-1];
+
+  // Update live marker position
+  if(patrolMarkerEnd){
+    patrolMarkerEnd.setLatLng([last.lat, last.lng]);
+    // Only pan if marker is outside visible area
+    if(!patrolMap.getBounds().contains([last.lat, last.lng])){
+      patrolMap.panTo([last.lat, last.lng], {animate:true, duration:0.8});
+    }
+  }
+
+  // Update polyline
+  if(patrolPolyline){
+    const latlngs = pts.map(p=>[p.lat,p.lng]);
+    patrolPolyline.setLatLngs(latlngs);
+  }
+
+  // Redraw all dots with new points
+  drawPatrolDots(pts, true);
+
+  // Update live pulsing marker
+  if(patrolMarkerEnd){
+    patrolMarkerEnd.setLatLng([last.lat, last.lng]);
+  }
+
+  // Update info
+  const el = document.getElementById('activePatrolPoints');
+  if(el) el.textContent = `${pts.length} σημεία GPS καταγεγραμμένα`;
+}
+
+// Draw dots for every GPS point on the map
+let patrolDotLayer = null;
+function drawPatrolDots(pts, isLive){
+  if(!patrolMap) return;
+  if(patrolDotLayer){ patrolMap.removeLayer(patrolDotLayer); patrolDotLayer=null; }
+
+  const layers = pts.map((p, i) => {
+    const isFirst = i === 0;
+    const isLast = i === pts.length - 1;
+    // Color: green for start, red/blue for last, purple gradient for middle
+    let color;
+    if(isFirst) color = '#00c97a';
+    else if(isLast) color = isLive ? '#ff1744' : '#1a6ef5';
+    else {
+      // Purple gradient like the image
+      const ratio = i / (pts.length - 1);
+      color = ratio < 0.5 ? '#7c4dff' : '#1a6ef5';
+    }
+
+    const radius = isFirst || isLast ? 8 : 5;
+    const weight = isFirst || isLast ? 3 : 2;
+
+    return L.circleMarker([p.lat, p.lng], {
+      radius,
+      fillColor: color,
+      color: '#fff',
+      weight,
+      opacity: 1,
+      fillOpacity: 1
+    }).bindTooltip(
+      `${isFirst?'🚩 Εκκίνηση':isLast?(isLive?'📍 Τώρα':'🏁 Τέλος'):'📌'} ${new Date(p.t).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`,
+      {permanent:false, direction:'top', className:'patrol-tooltip'}
+    );
+  });
+
+  patrolDotLayer = L.layerGroup(layers).addTo(patrolMap);
+}
+
+function showQuick(type){
+  const qv=document.getElementById('quickView');
+  const qt=document.getElementById('quickTitle');
+  const qb=document.getElementById('quickBody');
+  let html='';
+  const activeShifts=shifts.filter(s=>s.status==='active');
+  if(type==='onduty'){
+    qt.textContent='🟢 ΣΕ ΒΑΡΔΙΑ ΤΩΡΑ';
+    if(!activeShifts.length) html='<div class="empty" style="padding:14px">Κανείς σε βάρδια</div>';
+    else html=activeShifts.map(s=>{
+      const start=new Date(s.start_time);
+      const durMin=Math.floor((Date.now()-start)/60000);
+      const durTxt=durMin>=60?Math.floor(durMin/60)+'ω '+(durMin%60)+'λ':durMin+'λ';
+      const g=guards.find(x=>x.full_name===s.guard_name)||{};
+      return '<div onclick="focusGuardOnMap(\''+esc(s.guard_name||'')+'\')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:6px">'
+        +'<div><div style="font-weight:700;font-size:13px">👮 '+esc(s.guard_name||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">📍 '+esc(s.location_name||'')+' · από '+start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+' · 🗺️ πάτα για χάρτη</div></div>'
+        +'<div style="text-align:right"><div style="font-family:monospace;font-size:13px;color:var(--g)">'+durTxt+'</div>'
+        +(g.phone?'<a href="tel:'+g.phone+'" onclick="event.stopPropagation()" style="font-size:11px;color:var(--ac);text-decoration:none">📞 Κλήση</a>':'')+'</div></div>';
+    }).join('');
+  }
+  else if(type==='guards'){
+    qt.textContent='👮 ΟΛΟΙ ΟΙ ΦΥΛΑΚΕΣ';
+    if(!guards.length) html='<div class="empty" style="padding:14px">Δεν υπάρχουν φύλακες</div>';
+    else html=guards.map(g=>{
+      const onDuty=activeShifts.some(s=>s.guard_name===g.full_name);
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:6px">'
+        +'<div><div style="font-weight:700;font-size:13px">'+(onDuty?'🟢':'⚪')+' '+esc(g.full_name)+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">📍 '+esc(g.location_name||'—')+'</div></div>'
+        +(g.phone?'<a href="tel:'+g.phone+'" style="font-size:11px;color:var(--ac);text-decoration:none">📞</a>':'')+'</div>';
+    }).join('');
+  }
+  else if(type==='scans'){
+    qt.textContent='📡 ΣΚΑΝ ΣΗΜΕΡΑ';
+    const today=new Date();today.setHours(0,0,0,0);
+    const todayScans=scans.filter(s=>new Date(s.scanned_at)>=today);
+    if(!todayScans.length) html='<div class="empty" style="padding:14px">Κανένα σκαν σήμερα</div>';
+    else html=todayScans.slice(0,30).map(s=>{
+      const hasGps = s.lat && s.lng;
+      const clickAttr = hasGps ? ' onclick="focusScanOnMap('+s.lat+','+s.lng+',\''+esc(s.nfc_tag||s.location_name||'').replace(/\x27/g,'')+'\')" style="cursor:pointer;' : ' style="';
+      return '<div'+clickAttr+'display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:5px;border-left:3px solid '+(hasGps?'var(--g)':'var(--br)')+'">'
+        +'<div><div style="font-weight:700;font-size:12px">📌 '+esc(s.nfc_tag||s.location_name||'—')+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">👮 '+esc(s.guard_name||'')+(hasGps?' · 🗺️ δες στον χάρτη':' · χωρίς GPS')+'</div></div>'
+        +'<span style="font-family:monospace;font-size:11px;color:var(--y)">'+new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+'</span></div>';
+    }).join('');
+  }
+  else if(type==='sos'){
+    qt.textContent='🚨 ΕΝΕΡΓΑ SOS';
+    if(!sosAlerts.length) html='<div class="empty" style="padding:14px">✅ Κανένα ενεργό SOS</div>';
+    else html=sosAlerts.map(s=>{
+      return '<div style="padding:10px;background:rgba(232,51,74,0.08);border:1px solid var(--r);border-radius:10px;margin-bottom:6px">'
+        +'<div style="font-weight:700;font-size:13px;color:var(--r)">🚨 '+esc(s.guard_name||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--mu)">📍 '+esc(s.location_name||'')+' · '+new Date(s.created_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})+'</div>'
+        +(s.lat?'<a href="https://maps.google.com/?q='+s.lat+','+s.lng+'" target="_blank" style="font-size:11px;color:var(--ac)">🗺️ Δες στο χάρτη</a>':'')+'</div>';
+    }).join('');
+  }
+  qb.innerHTML=html;
+  qv.style.display='block';
+  qv.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function loadPatrolHistoryList(){
+  const data = await get('patrols','order=start_time.desc&limit=30');
+  if(Array.isArray(data)){ patrols = data; renderPatrolList(patrols); }
+}
+
+async function focusGuardOnMap(guardName){
+  const gf = document.getElementById('patrolGuardFilter');
+  if(gf){
+    if(![...gf.options].some(o=>o.value===guardName)){
+      const o=document.createElement('option');o.value=guardName;o.textContent=guardName;gf.appendChild(o);
+    }
+    gf.value = guardName;
+  }
+  await loadPatrols();
+  document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function resetMapView(){
+  // Ξεκλείδωσε το auto-zoom και πήγαινε στην τρέχουσα περιπολία
+  userFocusedPoint = false;
+  loadPatrols();
+}
+
+function focusScanOnMap(lat, lng, name){
+  document.getElementById('quickView').style.display='none';
+  if(!patrolMap){ initPatrolMap(); }
+  // Σημείωσε ότι ο χρήστης εστίασε χειροκίνητα - σταμάτα το auto-zoom
+  userFocusedPoint = true;
+  userFocusTime = Date.now();
+  setTimeout(()=>{
+    if(patrolMap){
+      patrolMap.setView([lat,lng], 18, {animate:true});
+      const icon = L.divIcon({className:'',html:'<div style="font-size:30px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7))">📍</div>',iconSize:[32,32],iconAnchor:[16,30]});
+      const m = L.marker([lat,lng],{icon}).addTo(patrolMap);
+      m.bindPopup('<div style="font-family:sans-serif;font-size:13px"><b>📌 '+name+'</b><br>🗺️ '+lat.toFixed(6)+', '+lng.toFixed(6)+'</div>').openPopup();
+      scanMarkers.push(m);
+    }
+    document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 200);
+}
+
+async function clearHistory(type){
+  const labels = {patrol_scans:'τα σκαν', shifts:'τις βάρδιες', patrols:'τις περιπολίες', incidents:'τα συμβάντα', all:'ΟΛΟ το ιστορικό', everything:'ΤΑ ΠΑΝΤΑ (φύλακες, χώροι, βάρδιες, σκαν)'};
+  if(!confirm('Διαγραφή '+labels[type]+';\n\nΑυτό ΔΕΝ αναιρείται!')) return;
+  if(type==='everything' && !confirm('⚠️ ΠΡΟΣΟΧΗ!\n\nΘα σβηστούν ΟΛΟΙ οι φύλακες, χώροι, βάρδιες και δεδομένα.\n\nΣίγουρα;')) return;
+
+  // Ζήτα τον κωδικό διαγραφής
+  const code = prompt('🔒 Εισάγετε τον κωδικό διαγραφής:');
+  if(!code) return;
+
+  try{
+    const r = await fetch(`${SB}/rest/v1/rpc/admin_clear`,{
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({ del_code: code, target: type })
+    });
+    const txt = await r.text();
+    const result = txt.replace(/[\"\s]/g,''); // καθάρισε εισαγωγικά/κενά
+    if(result === 'WRONG_CODE'){
+      toast('🔒 Λάθος κωδικός διαγραφής','err');
+      return;
+    }
+    if(result !== 'OK'){
+      toast('Σφάλμα: '+result,'err');
+      return;
+    }
+    toast('✓ Διαγράφηκε','ok');
+    await load();
+    renderIncidents(); renderShiftHistory(); loadPatrolHistoryList();
+  }catch(e){ toast('Σφάλμα διαγραφής','err'); }
+}
+
+async function renderDevices(){
+  const el = document.getElementById('devList');
+  if(!el) return;
+  try{
+    const devices = await get('devices','order=last_seen.desc');
+    const cntEl = document.getElementById('devCount');
+    if(!Array.isArray(devices) || !devices.length){
+      el.innerHTML = '<div style="font-size:12px;color:var(--mu)">Καμία συσκευή ακόμη</div>';
+      if(cntEl) cntEl.textContent = '0';
+      return;
+    }
+    if(cntEl) cntEl.textContent = devices.length;
+    el.innerHTML = devices.map(d=>{
+      const online = d.last_seen && (Date.now()-new Date(d.last_seen))<5*60*1000;
+      const installed = d.installed_at ? new Date(d.installed_at).toLocaleDateString('el-GR') : '—';
+      const lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString('el-GR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      const approved = d.approved === true;
+      const borderColor = !approved ? 'var(--y)' : (online?'var(--g)':'var(--mu)');
+      const statusBadge = !approved
+        ? '<span style="font-size:9px;background:rgba(255,193,7,0.15);color:var(--y);border:1px solid var(--y);padding:1px 7px;border-radius:10px;margin-left:6px">⏳ ΑΝΑΜΟΝΗ</span>'
+        : '<span style="font-size:9px;background:rgba(0,230,118,0.12);color:var(--g);border:1px solid var(--g);padding:1px 7px;border-radius:10px;margin-left:6px">✓ ΕΓΚΕΚΡΙΜΕΝΗ</span>';
+      const actionBtn = !approved
+        ? '<button onclick="approveDevice(\''+esc(d.device_id)+'\')" style="background:var(--g);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;margin-left:8px;font-family:\'Exo 2\',sans-serif">✓ Έγκριση</button>'
+        : '<button onclick="blockDevice(\''+esc(d.device_id)+'\')" style="background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);color:var(--y);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;margin-left:6px">🚫</button>';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--s2);border-radius:10px;margin-bottom:6px;border-left:3px solid '+borderColor+'">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(online?'🟢':'⚫')+' '+esc(d.model||'Συσκευή')+statusBadge+'</div>'
+        +'<div style="font-size:10px;color:var(--mu);margin-top:2px">'+(d.guard_name?'👮 '+esc(d.guard_name)+' · ':'')+(d.location_name?'📍 '+esc(d.location_name):'')+'</div>'
+        +'<div style="font-size:9px;color:var(--mu);margin-top:2px">Εγκατάσταση: '+installed+' · Τελευταία: '+lastSeen+(d.app_version?' · v'+esc(d.app_version):'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center">'+actionBtn
+        +'<button onclick="removeDevice(\''+esc(d.device_id)+'\')" style="background:rgba(232,51,74,0.1);border:1px solid rgba(232,51,74,0.3);color:var(--r);border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer;margin-left:6px">🗑️</button>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+  }catch(e){
+    el.innerHTML = '<div style="font-size:12px;color:var(--mu)">Σφάλμα φόρτωσης</div>';
+  }
+}
+
+async function approveDevice(id){
+  try{
+    await patch('devices',`device_id=eq.${encodeURIComponent(id)}`,{approved:true});
+    toast('Συσκευή εγκρίθηκε','ok');
+    renderDevices();
+  }catch(e){ toast('Σφάλμα','err'); }
+}
+
+async function blockDevice(id){
+  if(!confirm('Ανάκληση έγκρισης; Η συσκευή θα μπλοκαριστεί.')) return;
+  try{
+    await patch('devices',`device_id=eq.${encodeURIComponent(id)}`,{approved:false});
+    toast('Συσκευή μπλοκαρίστηκε','ok');
+    renderDevices();
+  }catch(e){ toast('Σφάλμα','err'); }
+}
+
+async function removeDevice(id){
+  if(!confirm('Διαγραφή αυτής της συσκευής;')) return;
+  try{
+    await sb('DELETE','devices',`device_id=eq.${encodeURIComponent(id)}`);
+    toast('Διαγράφηκε','ok');
+    renderDevices();
+  }catch(e){ toast('Σφάλμα','err'); }
+}
+
+function renderChecklistHtml(notes, handoverFrom){
+  if(!notes) return '';
+  var cl;
+  try{ cl = JSON.parse(notes); }catch(e){ return ''; }
+  if(!cl || typeof cl !== 'object') return '';
+  var labels = {asirmatos:'Ασύρματος',fakos:'Φακός',kinito:'Κινητό',roloi:'Ρολόι',fakelos:'Φάκελος',vivlia:'Βιβλία',kleidia:'Κλειδιά',adiavrocho:'Αδιάβροχο',alexisfairo:'Αλεξίσφαιρο',patrol:'Όχημα Patrol',exot:'Εξωτ. όχημα',esot:'Εσωτ. όχημα',ladia:'Λάδια',aeras:'Αέρας',antips:'Αντιψυκτικό',mpat:'Μπαταρία',frena:'Φρένα'};
+  var items = '';
+  for(var k in cl){
+    if(k==='notes'||k==='car_num') continue;
+    var v = cl[k];
+    if(v==='ΝΑΙ'||v===true){
+      items += '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(0,201,122,0.12);color:#00e676;border:1px solid rgba(0,201,122,0.3);margin:2px">'+(labels[k]||k)+' ✓</span> ';
+    } else if(v==='ΟΧΙ'||v===false){
+      items += '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(255,23,68,0.1);color:#ff1744;border:1px solid rgba(255,23,68,0.3);margin:2px">'+(labels[k]||k)+' ✗</span> ';
+    }
+  }
+  var carTxt = cl.car_num ? '<span style="font-size:10px;color:#2979ff;margin-left:6px">🚗 '+esc(cl.car_num)+'</span>' : '';
+  var notesTxt = cl.notes ? '<div style="font-size:11px;color:#cfe;margin-top:6px;padding:6px 8px;background:rgba(41,121,255,0.08);border-radius:6px">📝 '+esc(cl.notes)+'</div>' : '';
+  var ho = handoverFrom && handoverFrom!=='—' ? '<span style="font-size:10px;color:#90a;margin-left:6px">↩ από '+esc(handoverFrom)+'</span>' : '';
+  if(!items && !notesTxt) return '';
+  return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--br)">'
+    + '<div style="font-size:9px;color:var(--mu);letter-spacing:2px;margin-bottom:6px">📋 ΒΙΒΛΙΟ ΣΥΜΒΑΝΤΩΝ / ΠΑΡΑΛΑΒΗ'+ho+carTxt+'</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:3px">'+items+'</div>'+notesTxt+'</div>';
+}
+
+function viewPatrolFromArchive(idx, isActive){
+  const p = patrols[idx];
+  if(!p) return;
+  tab('overview');
+  // Ξεκλείδωσε το auto-zoom ώστε να φανεί όλο το δρομολόγιο
+  userFocusedPoint = false;
+  setTimeout(()=>{
+    showPatrolOnMap(p, isActive);  // ζουμάρει αυτόματα σε όλη τη διαδρομή (fitBounds)
+    document.getElementById('patrolMapEl')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }, 400);
+}
+
+async function loadPatrols(){
+  const filterGuard = document.getElementById('patrolGuardFilter')?.value||'all';
+
+  // Update guard dropdown
+  const gf = document.getElementById('patrolGuardFilter');
+  if(gf && gf.options.length <= 1){
+    guards.forEach(g=>{
+      const o = document.createElement('option');
+      o.value = g.full_name; o.textContent = g.full_name;
+      gf.appendChild(o);
+    });
+  }
+
+  let query = 'order=start_time.desc&limit=30';
+  if(filterGuard !== 'all') query += `&guard_name=eq.${encodeURIComponent(filterGuard)}`;
+  const data = await get('patrols', query);
+  if(!Array.isArray(data)) return;
+  patrols = data;
+
+  // Check for active patrol
+  const active = patrols.find(p=>p.status==='active');
+  const banner = document.getElementById('activePatrolBanner');
+  const dot = document.getElementById('livePatrolDot');
+  const txt = document.getElementById('livePatrolTxt');
+
+  if(active){
+    banner.style.display='block';
+    dot.style.display='block';
+    txt.style.display='inline';
+    const pts = parsePatrolPoints(active.points);
+    document.getElementById('activePatrolInfo').textContent =
+      `🚶 ${active.guard_name} — ${active.location_name} (από ${new Date(active.start_time).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})})`;
+    document.getElementById('activePatrolPoints').textContent =
+      `${pts.length} σημεία GPS καταγεγραμμένα`;
+    showPatrolOnMap(active, true);
+    // Zoom to last GPS point ΜΟΝΟ αν ο χρήστης δεν εστίασε χειροκίνητα
+    if(pts.length > 0 && !userFocusedPoint){
+      const last = pts[pts.length-1];
+      setTimeout(()=>{
+        if(patrolMap && !userFocusedPoint){
+          patrolMap.setView([last.lat, last.lng], 18, {animate:true});
+        }
+      }, 300);
+    }
+  } else {
+    banner.style.display='none';
+    dot.style.display='none';
+    txt.style.display='none';
+    // Show most recent patrol on map and zoom to it
+    if(patrols.length > 0){
+      showPatrolOnMap(patrols[0], false);
+      const pts = parsePatrolPoints(patrols[0].points);
+      if(pts.length > 0 && !userFocusedPoint){
+        const last = pts[pts.length-1];
+        setTimeout(()=>{
+          if(patrolMap && !userFocusedPoint){
+            patrolMap.setView([last.lat, last.lng], 18, {animate:true});
+          }
+        }, 300);
+      }
+    }
+  }
+
+  renderPatrolList(patrols);
+  renderScanMarkers(filterGuard);
+}
+
+function getElapsed(startTime){
+  const start = new Date(startTime).getTime();
+  const d = Math.floor((Date.now()-start)/1000);
+  const h = String(Math.floor(d/3600)).padStart(2,'0');
+  const m = String(Math.floor((d%3600)/60)).padStart(2,'0');
+  return h+':'+m;
+}
+
+function renderScanMarkers(filterGuard){
+  if(!patrolMap) return;
+  // Καθάρισε προηγούμενες πινέζες σκαν
+  if(scanMarkers && scanMarkers.length){
+    scanMarkers.forEach(m=>{ try{patrolMap.removeLayer(m);}catch(e){} });
+  }
+  scanMarkers = [];
+
+  // Σημερινά σκαν με GPS
+  const today = new Date(); today.setHours(0,0,0,0);
+  let todayScans = scans.filter(s=>{
+    if(!s.scanned_at) return false;
+    if(!s.lat || !s.lng) return false;
+    if(new Date(s.scanned_at) < today) return false;
+    if(filterGuard && filterGuard!=='all' && s.guard_name!==filterGuard) return false;
+    return true;
+  });
+
+  todayScans.forEach(s=>{
+    const icon = L.divIcon({
+      className:'',
+      html:'<div style="font-size:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6))">📌</div>',
+      iconSize:[24,24], iconAnchor:[12,22]
+    });
+    const t = new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
+    const m = L.marker([s.lat, s.lng],{icon}).addTo(patrolMap);
+    m.bindPopup('<div style="font-family:sans-serif;font-size:12px"><b>📌 '+esc(s.nfc_tag||'Σκαν')+'</b><br>👮 '+esc(s.guard_name||'—')+'<br>🕐 '+t+'</div>');
+    scanMarkers.push(m);
+  });
+}
+
+function parsePatrolPoints(pts){
+  try {
+    if(typeof pts === 'string') return JSON.parse(pts)||[];
+    if(Array.isArray(pts)) return pts;
+    return [];
+  } catch(e){ return []; }
+}
+
+function showPatrolOnMap(patrol, isLive){
+  const pts = parsePatrolPoints(patrol.points);
+  const noData = document.getElementById('patrolNoData');
+
+  if(!patrolMap){ initPatrolMap(); }
+
+  // Καθάρισε προηγούμενη διαδρομή
+  if(patrolPolyline){ try{patrolMap.removeLayer(patrolPolyline);}catch(e){} patrolPolyline=null; }
+  if(patrolMarkerStart){ try{patrolMap.removeLayer(patrolMarkerStart);}catch(e){} patrolMarkerStart=null; }
+  if(patrolMarkerEnd){ try{patrolMap.removeLayer(patrolMarkerEnd);}catch(e){} patrolMarkerEnd=null; }
+  if(patrolDotLayer){ try{patrolMap.removeLayer(patrolDotLayer);}catch(e){} patrolDotLayer=null; }
+
+  if(!pts.length){
+    if(noData) noData.style.display='flex';
+    return;
+  }
+  if(noData) noData.style.display='none';
+
+  const latlngs = pts.map(p=>[p.lat,p.lng]);
+
+  // ΓΡΑΜΜΗ ΔΙΑΔΡΟΜΗΣ (το δρομολόγιο που έκανε ο φύλακας)
+  patrolPolyline = L.polyline(latlngs, {
+    color: isLive ? '#00c97a' : '#1a6ef5',
+    weight: 4,
+    opacity: 0.85,
+    smoothFactor: 1
+  }).addTo(patrolMap);
+
+  // Κουκκίδες σε κάθε σημείο GPS
+  drawPatrolDots(pts, isLive);
+
+  // Marker τέλους (ζωντανό = κόκκινο, τελειωμένο = μπλε)
+  const last = pts[pts.length-1];
+  const endIcon = L.divIcon({
+    className:'',
+    html:`<div style="font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.7))">${isLive?'🔴':'🏁'}</div>`,
+    iconSize:[30,30], iconAnchor:[15,28]
+  });
+  patrolMarkerEnd = L.marker([last.lat,last.lng],{icon:endIcon}).addTo(patrolMap);
+
+  // ΖΟΥΜΑΡΕ ΝΑ ΦΑΙΝΕΤΑΙ ΟΛΟ ΤΟ ΔΡΟΜΟΛΟΓΙΟ (εκτός αν ο χρήστης εστίασε χειροκίνητα)
+  if(!userFocusedPoint){
+    try{
+      patrolMap.fitBounds(patrolPolyline.getBounds(), {padding:[40,40], maxZoom:18});
+    }catch(e){}
+  }
+
+  // Πληροφορίες (overlay legend)
+  const overlay = document.getElementById('patrolMapOverlay');
+  const legend = document.getElementById('mapLegend');
+  if(overlay && legend){
+    overlay.style.display='block';
+    const dur = (patrol.end_time||patrol.ended_at) ?
+      Math.round((new Date(patrol.end_time||patrol.ended_at)-new Date(patrol.start_time||patrol.started_at))/60000) : null;
+    legend.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--g)"></div>
+        <span>🚩 Εκκίνηση</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div style="width:10px;height:10px;border-radius:50%;background:${isLive?'var(--r)':'var(--ac)'}"></div>
+        <span>${isLive?'📍 Τώρα':'🏁 Τέλος'}</span>
+      </div>
+      <div style="color:var(--mu);margin-top:4px">${pts.length} σημεία GPS</div>
+      ${dur!==null?`<div style="color:var(--mu)">⏱ ${dur} λεπτά</div>`:''}`;
+  }
+}
+
+function renderPatrolList(patrols){
+  const el = document.getElementById('patrolList');
+  console.log('renderPatrolList called with', patrols.length, 'patrols');
+  if(!patrols.length){
+    el.innerHTML='<div class="empty">Δεν υπάρχουν περιπολίες ακόμη</div>';
+    return;
+  }
+  el.innerHTML = patrols.map(p=>{
+    const pts = parsePatrolPoints(p.points);
+    const dur = p.end_time ?
+      Math.round((new Date(p.end_time)-new Date(p.start_time))/60000) : null;
+    const isActive = p.status==='active' && !p.end_time && !p.ended_at;
+    const pidx = patrols.indexOf(p);
+    return `<div class="card" style="border-left:3px solid ${isActive?'var(--g)':'var(--ac)'};margin-bottom:10px;cursor:pointer" onclick="viewPatrolFromArchive(${pidx},${isActive})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-weight:700;font-size:14px">🚶 ${esc(p.guard_name||'—')}</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">📍 ${esc(p.location_name||'—')}</div>
+        </div>
+        <span style="font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700;${isActive?'background:rgba(0,201,122,0.15);color:var(--g);border:1px solid var(--g)':'background:var(--s2);border:1px solid var(--br);color:var(--mu)'}">
+          ${isActive ? '🟢 LIVE' : '✅ ΟΛΟΚΛΗΡΩΘΗΚΕ'}
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--mu);margin-top:8px;display:flex;gap:14px;flex-wrap:wrap">
+        <span>🕐 ${new Date(p.start_time).toLocaleString('el-GR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+        ${dur!==null?`<span>⏱ ${dur} λεπτά</span>`:''}
+        <span>📌 ${pts.length} σημεία</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function startPatrolLiveRefresh(){
+  stopPatrolLiveRefresh();
+  patrolRefreshTimer = setInterval(()=>{
+    if(currentTab==='overview'){
+      updateLiveMarker();
+      loadPatrols();
+    }
+  }, 2000);
+}
+
+function stopPatrolLiveRefresh(){
+  if(patrolRefreshTimer){ clearInterval(patrolRefreshTimer); patrolRefreshTimer=null; }
+}
+
+function exportPDF(){
+  const now = new Date().toLocaleString('el-GR');
+  const date = new Date().toLocaleDateString('el-GR').replace(/\//g,'-');
+
+  const guardsRows = guards.map((g,i)=>`
+    <tr style="background:${i%2===0?'#0d1a2e':'#111f3c'}">
+      <td>${g.full_name||'—'}</td>
+      <td>${g.phone||'—'}</td>
+      <td>${g.location_name||'—'}</td>
+      <td>${g.role||'—'}</td>
+      <td>${g.hourly_rate||'—'}€</td>
+    </tr>`).join('');
+
+  const activeShifts = shifts.filter(s=>s.status==='active');
+  const shiftsRows = shifts.slice(0,30).map((s,i)=>`
+    <tr style="background:${i%2===0?'#0d1a2e':'#111f3c'}">
+      <td>${s.guard_name||'—'}</td>
+      <td>${s.location_name||'—'}</td>
+      <td>${s.start_time?new Date(s.start_time).toLocaleString('el-GR'):'—'}</td>
+      <td>${s.end_time?new Date(s.end_time).toLocaleString('el-GR'):'—'}</td>
+      <td style="color:${s.status==='active'?'#00c97a':'#aaa'}">${s.status==='active'?'ΕΝΕΡΓΗ':'ΤΕΛΕΙΩΣΕ'}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>SNTS Hellas - Αναφορά</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#04080f;color:#dce8ff;margin:0;padding:20px}
+    .header{background:linear-gradient(135deg,#0a1628,#0d1f3c);padding:20px;border-radius:10px;margin-bottom:20px;border-left:4px solid #1a6ef5}
+    h1{color:#1a6ef5;margin:0;font-size:22px;letter-spacing:2px}
+    .sub{color:#9ab;font-size:11px;letter-spacing:3px;margin-top:4px}
+    .meta{color:#ccc;font-size:11px;margin-top:8px}
+    h2{color:#1a6ef5;font-size:13px;letter-spacing:2px;margin:20px 0 8px;border-bottom:1px solid #1a6ef5;padding-bottom:4px}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#0a1628;color:#1a6ef5;padding:8px 10px;text-align:left;letter-spacing:1px;font-size:10px}
+    td{padding:7px 10px;color:#dce8ff;border-bottom:1px solid #1a3060}
+    .footer{text-align:center;color:#566;font-size:10px;margin-top:30px;padding-top:10px;border-top:1px solid #1a3060}
+  </style></head><body>
+  <div class="header">
+    <h1>SNTS HELLAS SECURITY</h1>
+    <div class="sub">ΑΝΑΦΟΡΑ ΔΙΑΧΕΙΡΙΣΗΣ</div>
+    <div class="meta">Εκτύπωση: ${now} &nbsp;|&nbsp; ${guards.length} φύλακες | ${locations.length} χώροι | ${scans.length} σκαν</div>
+  </div>
+  <h2>👮 ΠΡΟΣΩΠΙΚΟ ΑΣΦΑΛΕΙΑΣ</h2>
+  <table><thead><tr><th>ΟΝΟΜΑ</th><th>ΤΗΛΕΦΩΝΟ</th><th>ΧΩΡΟΣ</th><th>ΡΟΛΟΣ</th><th>€/ΩΡΑ</th></tr></thead>
+  <tbody>${guardsRows}</tbody></table>
+  <h2>⏱ ΒΑΡΔΙΕΣ (τελευταίες 30)</h2>
+  <table><thead><tr><th>ΦΥΛΑΚΑΣ</th><th>ΧΩΡΟΣ</th><th>ΕΝΑΡΞΗ</th><th>ΛΗΞΗ</th><th>ΚΑΤΑΣΤΑΣΗ</th></tr></thead>
+  <tbody>${shiftsRows}</tbody></table>
+  <div class="footer">SNTS Hellas Security — Εμπιστευτικό Έγγραφο</div>
+  </body></html>`;
+
+  // Open in new window - works with file://
+  const w = window.open('', '_blank');
+  if(w){ w.document.write(html); w.document.close(); toast('Άνοιξε αναφορά — πάτα Ctrl+P για PDF','ok'); }
+  else { toast('Επίτρεψε τα popups στον browser!','err'); }
+}
+
+function exportXLS(){
+  const wb=XLSX.utils.book_new();
+  const gd=[['Ονοματεπώνυμο','Τηλέφωνο','Ρόλος','Χώρος Φύλαξης','€/Ώρα']];
+  guards.forEach(g=>gd.push([g.full_name,g.phone,g.role,g.location_name,g.hourly_rate]));
+  const ws1=XLSX.utils.aoa_to_sheet(gd);
+  XLSX.utils.book_append_sheet(wb,ws1,'Προσωπικό');
+  if(shifts.length){
+    const sd=[['Φύλακας','Χώρος','Έναρξη','Λήξη','Κατάσταση']];
+    shifts.forEach(s=>sd.push([s.guard_name,s.location_name,s.start_time?new Date(s.start_time).toLocaleString('el-GR'):'—',s.end_time?new Date(s.end_time).toLocaleString('el-GR'):'—',s.status]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sd),'Βάρδιες');
+  }
+  if(scans.length){
+    const sc2=[['Σημείο','Φύλακας','Χώρος','Ημερομηνία','Ώρα','GPS Lat','GPS Lng']];
+    scans.forEach(s=>sc2.push([s.nfc_tag,s.guard_name,s.location_name,s.scanned_at?new Date(s.scanned_at).toLocaleDateString('el-GR'):'—',s.scanned_at?new Date(s.scanned_at).toLocaleTimeString('el-GR'):'—',s.lat||'',s.lng||'']));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sc2),'Σκαν');
+  }
+  // Build HTML table for Excel-like view
+  const date2 = new Date().toLocaleDateString('el-GR').replace(/\//g,'-');
+  let xlsHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SNTS Excel</title>
+  <style>body{font-family:Arial;font-size:12px}table{border-collapse:collapse;width:100%}
+  th{background:#1a6ef5;color:#fff;padding:6px 10px;text-align:left}
+  td{padding:5px 10px;border-bottom:1px solid #ddd}tr:nth-child(even){background:#f5f5f5}
+  h2{color:#1a6ef5}h1{color:#0a3080}</style></head><body>
+  <h1>SNTS HELLAS SECURITY — ${date2}</h1>`;
+
+  xlsHtml += '<h2>Προσωπικό</h2><table><tr><th>Ονοματεπώνυμο</th><th>Τηλέφωνο</th><th>Χώρος</th><th>Ρόλος</th><th>€/Ώρα</th></tr>';
+  guards.forEach(g=>{ xlsHtml+=`<tr><td>${g.full_name||''}</td><td>${g.phone||''}</td><td>${g.location_name||''}</td><td>${g.role||''}</td><td>${g.hourly_rate||''}€</td></tr>`; });
+  xlsHtml += '</table>';
+
+  xlsHtml += '<h2>Βάρδιες</h2><table><tr><th>Φύλακας</th><th>Χώρος</th><th>Έναρξη</th><th>Λήξη</th><th>Κατάσταση</th></tr>';
+  shifts.slice(0,50).forEach(s=>{ xlsHtml+=`<tr><td>${s.guard_name||''}</td><td>${s.location_name||''}</td><td>${s.start_time?new Date(s.start_time).toLocaleString('el-GR'):''}</td><td>${s.end_time?new Date(s.end_time).toLocaleString('el-GR'):''}</td><td>${s.status==='active'?'ΕΝΕΡΓΗ':'ΤΕΛΕΙΩΣΕ'}</td></tr>`; });
+  xlsHtml += '</table>';
+
+  xlsHtml += '<h2>Σκαν</h2><table><tr><th>Σημείο</th><th>Φύλακας</th><th>Χώρος</th><th>Ημερομηνία</th><th>Ώρα</th></tr>';
+  scans.slice(0,100).forEach(s=>{ xlsHtml+=`<tr><td>${s.nfc_tag||''}</td><td>${s.guard_name||''}</td><td>${s.location_name||''}</td><td>${s.scanned_at?new Date(s.scanned_at).toLocaleDateString('el-GR'):''}</td><td>${s.scanned_at?new Date(s.scanned_at).toLocaleTimeString('el-GR'):''}</td></tr>`; });
+  xlsHtml += '</table></body></html>';
+
+  const w2 = window.open('', '_blank');
+  if(w2){ w2.document.write(xlsHtml); w2.document.close(); toast('Άνοιξε δεδομένα — πάτα Ctrl+P ή αποθήκευσε','ok'); }
+  else { toast('Επίτρεψε τα popups στον browser!','err'); }
+}
+
+// ── TABS ─────────────────────────────────────────────
+function tab(t){
+  if(t==='patrols') t='overview';
+  currentTab=t;
+  try{ localStorage.setItem('snts_tab', t); }catch(e){}
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  const panel=document.getElementById('panel-'+t);
+  if(!panel){ t='overview'; }
+  document.getElementById('panel-'+t).classList.add('on');
+  // Highlight tab - sub-panels (guards/locations/payroll) highlight settings
+  const tabKey = ['guards','locations','payroll','archive'].includes(t) ? 'settings' : t;
+  document.querySelector('.tab[data-tab="'+tabKey+'"]')?.classList.add('on');
+  if(t==='guards')renderGuards();
+  if(t==='locations')renderLocations();
+  if(t==='settings'){ renderSOSContacts(); renderDevices(); }
+  if(t==='payroll')initPayrollGuardSelect();
+  if(t==='overview'){ initPatrolMap(); loadPatrols(); startPatrolLiveRefresh(); }
+  else { stopPatrolLiveRefresh(); }
+  if(t==='archive'){ load().then(()=>{ renderIncidents(); renderShiftHistory(); loadPatrolHistoryList(); }); }
+}
+
+// ── HELPERS ──────────────────────────────────────────
+let hisView='shifts';
+
+function toggleHistory(){
+  const el=document.getElementById('historyFilters');
+  const btn=document.getElementById('historyToggleBtn');
+  if(!el||!btn)return;
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'block';
+  btn.textContent=isOpen?'▼ Φίλτρα':'▲ Κλείσιμο';
+  if(!isOpen){
+    // Set default dates
+    const now=new Date();
+    const weekAgo=new Date(now-7*24*60*60*1000);
+    const fromEl=document.getElementById('hisFrom');
+    const toEl=document.getElementById('hisTo');
+    if(fromEl&&!fromEl.value)fromEl.value=weekAgo.toISOString().split('T')[0];
+    if(toEl&&!toEl.value)toEl.value=now.toISOString().split('T')[0];
+    // Populate dropdowns
+    const locSel=document.getElementById('hisLocFilter');
+    const gSel=document.getElementById('hisGuardFilter');
+    if(locSel){
+      const allLocs=[...new Set([...locations.map(l=>l.name),...shifts.map(s=>s.location_name).filter(Boolean)])].sort();
+      locSel.innerHTML='<option value="all">Όλοι οι Χώροι</option>';
+      allLocs.forEach(l=>locSel.innerHTML+=`<option value="${esc(l)}">${esc(l)}</option>`);
+    }
+    if(gSel){
+      const allGs=[...new Set([...guards.map(g=>g.full_name),...shifts.map(s=>s.guard_name).filter(Boolean)])].sort();
+      gSel.innerHTML='<option value="all">Όλοι οι Φύλακες</option>';
+      allGs.forEach(g=>gSel.innerHTML+=`<option value="${esc(g)}">${esc(g)}</option>`);
+    }
+    applyHistoryFilters();
+  }
+}
+
+function updateHisGuards(){
+  const locSel=document.getElementById('hisLocFilter');
+  const gSel=document.getElementById('hisGuardFilter');
+  if(!locSel||!gSel)return;
+  const selLoc=locSel.value;
+  const curG=gSel.value;
+
+  let filtGuards=[];
+  if(selLoc==='all'){
+    filtGuards=[...new Set([...guards.map(g=>g.full_name),...shifts.map(s=>s.guard_name).filter(Boolean)])].sort();
+  } else {
+    // Guards assigned to this location
+    const locGuards=guards.filter(g=>g.location_name===selLoc).map(g=>g.full_name);
+    // Guards who had shifts in this location
+    const shiftGuards=shifts.filter(s=>s.location_name===selLoc).map(s=>s.guard_name).filter(Boolean);
+    filtGuards=[...new Set([...locGuards,...shiftGuards])].sort();
+  }
+
+  gSel.innerHTML='<option value="all">Όλοι οι Φύλακες</option>';
+  filtGuards.forEach(g=>gSel.innerHTML+=`<option value="${esc(g)}">${esc(g)}</option>`);
+  if(curG&&curG!=='all'&&filtGuards.includes(curG))gSel.value=curG;
+}
+
+function setHisView(v){
+  hisView=v;
+  ['shifts','scans','both'].forEach(x=>{
+    const btn=document.getElementById('hv'+x.charAt(0).toUpperCase()+x.slice(1));
+    if(btn){
+      btn.style.background=x===v?'rgba(26,110,245,0.15)':'var(--s2)';
+      btn.style.borderColor=x===v?'var(--ac)':'var(--br)';
+      btn.style.color=x===v?'var(--ac)':'var(--mu)';
+    }
+  });
+  applyHistoryFilters();
+}
+
+async function applyHistoryFilters(){
+  const el=document.getElementById('shiftHistory');
+  if(!el)return;
+
+  const locF=document.getElementById('hisLocFilter')?.value||'all';
+  const guardF=document.getElementById('hisGuardFilter')?.value||'all';
+  const fromF=document.getElementById('hisFrom')?.value;
+  const toF=document.getElementById('hisTo')?.value;
+  const from=fromF?new Date(fromF):null;
+  const to=toF?new Date(toF):null;
+  if(to)to.setHours(23,59,59);
+
+  // Filter shifts
+  let filtShifts=shifts.filter(s=>{
+    if(locF!=='all'&&s.location_name!==locF)return false;
+    if(guardF!=='all'&&s.guard_name!==guardF)return false;
+    if(from&&new Date(s.start_time)<from)return false;
+    if(to){const t2=new Date(to);t2.setHours(23,59,59,999);if(new Date(s.start_time)>t2)return false;}
+    return true;
+  });
+
+  // Filter scans
+  let filtScans=scans.filter(s=>{
+    if(locF!=='all'&&s.location_name!==locF)return false;
+    if(guardF!=='all'&&s.guard_name!==guardF)return false;
+    if(from&&new Date(s.scanned_at)<from)return false;
+    if(to&&new Date(s.scanned_at)>to)return false;
+    return true;
+  });
+
+  let html='';
+
+  if((hisView==='shifts'||hisView==='both')&&filtShifts.length){
+    html+=`<div style="font-size:10px;color:var(--ac);letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-bottom:8px">⏱ ΒΑΡΔΙΕΣ (${filtShifts.length})</div>`;
+    html+=filtShifts.map(s=>{
+      const start=new Date(s.start_time);
+      const end=s.end_time?new Date(s.end_time):null;
+      const active=s.status==='active';
+      let dur='—';
+      if(end){const d=Math.floor((end-start)/1000);dur=`${String(Math.floor(d/3600)).padStart(2,'0')}:${String(Math.floor((d%3600)/60)).padStart(2,'0')}`;}
+      else if(active)dur=getElapsed(s.start_time)+' ▶';
+      return `<div style="background:var(--s);border:1px solid ${active?'var(--g)':'var(--br)'};border-radius:12px;padding:12px;margin-bottom:7px;border-left:3px solid ${active?'var(--g)':'var(--mu)'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div><div style="font-weight:700;font-size:14px">👮 ${esc(s.guard_name||'—')}</div>
+          <div style="font-size:11px;color:var(--mu)">📍 ${esc(s.location_name||'—')}</div></div>
+          <span style="font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700;${active?'background:rgba(0,201,122,0.15);border:1px solid var(--g);color:var(--g)':'background:var(--s2);border:1px solid var(--br);color:var(--mu)'}">${active?'ΤΡΕΧΟΥΣΑ':'ΤΕΛΕΙΩΣΕ'}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:9px;color:var(--mu);text-transform:uppercase">Έναρξη</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:2px">${start.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:9px;color:var(--mu)">${start.toLocaleDateString('el-GR')}</div>
+          </div>
+          <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:9px;color:var(--mu);text-transform:uppercase">Λήξη</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:2px">${end?end.toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'}):active?'—':'—'}</div>
+            <div style="font-size:9px;color:var(--mu)">${end?end.toLocaleDateString('el-GR'):''}</div>
+          </div>
+          <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-size:9px;color:var(--mu);text-transform:uppercase">Διάρκεια</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:12px;margin-top:2px;color:var(--y)">${dur}</div>
+          </div>
+        </div>
+        ${renderChecklistHtml(s.notes, s.handover_from)}
+      </div>`;
+    }).join('');
+  }
+
+  if((hisView==='scans'||hisView==='both')&&filtScans.length){
+    if(hisView==='both')html+=`<div style="font-size:10px;color:var(--ac);letter-spacing:2px;font-weight:700;text-transform:uppercase;margin:12px 0 8px">📡 ΣΚΑΝ (${filtScans.length})</div>`;
+    const byGuard={};
+    filtScans.forEach(s=>{const g=s.guard_name||'—';if(!byGuard[g])byGuard[g]=[];byGuard[g].push(s);});
+    html+=Object.entries(byGuard).map(([gName,gScans])=>`
+      <div style="background:var(--s);border:1px solid var(--br);border-radius:12px;margin-bottom:8px;overflow:hidden">
+        <div style="padding:10px 12px;background:rgba(26,110,245,0.06);border-bottom:1px solid var(--br);display:flex;justify-content:space-between">
+          <div style="font-weight:700">👮 ${esc(gName)}</div>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--ac)">${gScans.length} σκαν</span>
+        </div>
+        <div style="padding:8px 12px">
+          ${gScans.map(s=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 8px;background:var(--s2);border-radius:8px;margin-bottom:4px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--ac);flex-shrink:0"></div>
+                <div style="font-size:13px;font-weight:600">${esc(s.nfc_tag||'—')}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--ac)">${new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+                <div style="font-size:9px;color:var(--mu)">${new Date(s.scanned_at).toLocaleDateString('el-GR')}</div>
+                ${s.lat?`<a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(26,110,245,0.15);border:1px solid var(--ac);border-radius:20px;font-size:9px;color:var(--ac);text-decoration:none">🗺️ Χάρτης</a>`:''}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+
+  if(!html)html='<div class="empty">Κανένα αποτέλεσμα για αυτά τα κριτήρια</div>';
+  el.innerHTML=html;
+}
+
+function toast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast'+(type?' '+type:'');
+  el.classList.add('on');setTimeout(()=>el.classList.remove('on'),2800);
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
