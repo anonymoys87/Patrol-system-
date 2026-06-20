@@ -548,7 +548,7 @@ const patch=(t,q,b)=>sb('PATCH',t,q,b);
 
 // ── STATE ────────────────────────────────────────────
 let guards=[],locations=[],shifts=[],scans=[],sosAlerts=[],heartbeats=[],patrols=[];
-let patrolPolyline=null, patrolMarker=null, patrolRefreshTimer=null, patrolMarkerStart=null, patrolMarkerEnd=null;
+let patrolPolyline=null, patrolMarker=null, patrolRefreshTimer=null, patrolMarkerStart=null, patrolMarkerEnd=null, scanMarkers=[];
 let isLoggedIn=false;
 let selLoc=null;
 let liveTimer=null;
@@ -690,7 +690,7 @@ async function load(){
   // Only render current tab - never switch tabs
   if(currentTab==='overview') renderOverview();
   else if(currentTab==='guards') renderGuards();
-  else if(currentTab==='scans'){initScanFilters();renderFullScans();}
+  // (scans tab δεν χρησιμοποιείται)
   // Make sure correct panel is visible
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
@@ -1850,6 +1850,45 @@ async function loadPatrols(){
 
   renderPatrolList(patrols);
   renderScanMarkers(filterGuard);
+}
+
+function getElapsed(startTime){
+  const start = new Date(startTime).getTime();
+  const d = Math.floor((Date.now()-start)/1000);
+  const h = String(Math.floor(d/3600)).padStart(2,'0');
+  const m = String(Math.floor((d%3600)/60)).padStart(2,'0');
+  return h+':'+m;
+}
+
+function renderScanMarkers(filterGuard){
+  if(!patrolMap) return;
+  // Καθάρισε προηγούμενες πινέζες σκαν
+  if(scanMarkers && scanMarkers.length){
+    scanMarkers.forEach(m=>{ try{patrolMap.removeLayer(m);}catch(e){} });
+  }
+  scanMarkers = [];
+
+  // Σημερινά σκαν με GPS
+  const today = new Date(); today.setHours(0,0,0,0);
+  let todayScans = scans.filter(s=>{
+    if(!s.scanned_at) return false;
+    if(!s.lat || !s.lng) return false;
+    if(new Date(s.scanned_at) < today) return false;
+    if(filterGuard && filterGuard!=='all' && s.guard_name!==filterGuard) return false;
+    return true;
+  });
+
+  todayScans.forEach(s=>{
+    const icon = L.divIcon({
+      className:'',
+      html:'<div style="font-size:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6))">📌</div>',
+      iconSize:[24,24], iconAnchor:[12,22]
+    });
+    const t = new Date(s.scanned_at).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'});
+    const m = L.marker([s.lat, s.lng],{icon}).addTo(patrolMap);
+    m.bindPopup('<div style="font-family:sans-serif;font-size:12px"><b>📌 '+esc(s.nfc_tag||'Σκαν')+'</b><br>👮 '+esc(s.guard_name||'—')+'<br>🕐 '+t+'</div>');
+    scanMarkers.push(m);
+  });
 }
 
 function parsePatrolPoints(pts){
